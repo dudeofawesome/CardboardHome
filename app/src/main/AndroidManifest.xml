@@ -2,6 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="dudeofawesome.cardboardhome" >
 
+    <uses-permission android:name="android.permission.NFC" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+
     <uses-feature
         android:glEsVersion="0x00020000"
         android:required="true" />
@@ -17,7 +20,7 @@
             android:screenOrientation="landscape" >
             <intent-filter>
 
-                <!-- <action android:name="android.nfc.action.NDEF_DISCOVERED"></action> -->
+                <action android:name="android.nfc.action.NDEF_DISCOVERED"></action>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />

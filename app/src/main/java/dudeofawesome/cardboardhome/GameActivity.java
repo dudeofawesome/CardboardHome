@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.content.res.Resources;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
@@ -17,7 +18,9 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.net.Uri;
 import android.os.Bundle;
+import android.util.DisplayMetrics;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -28,12 +31,17 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.Toast;
+
+import com.google.vrtoolkit.cardboard.CardboardActivity;
+
 import java.util.ArrayList;
 import java.util.List;
 
 
-public class GameActivity extends Activity implements SensorEventListener {
+public class GameActivity extends CardboardActivity implements SensorEventListener {
 
+    private MyView gameView = null;
     public static ArrayList<ApplicationItem> installedApps = new ArrayList<ApplicationItem>();
     public static float[] accelData = {0f, 0f, 0f};
     public static float[] gyroData = {0f, 0f, 0f};
@@ -43,24 +51,16 @@ public class GameActivity extends Activity implements SensorEventListener {
 
 
     private final int MAX_NUMBER_OF_APPS = 5;
+    private final int APP_SPACING = 115;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         // setContentView(R.layout.activity_game);
-        setContentView(new MyView(this));
+        gameView = new MyView(this);
+        setContentView(gameView);
 
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
-            getWindow().getDecorView()
-                    .setSystemUiVisibility(
-                            View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                          | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                          | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                          | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                          | View.SYSTEM_UI_FLAG_FULLSCREEN
-                          | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-            );
-        }
+        makeImmersive();
 
         if (!isMyAppLauncherDefault()) {
             Intent intent = new Intent(Intent.ACTION_MAIN);
@@ -70,16 +70,28 @@ public class GameActivity extends Activity implements SensorEventListener {
 //            startActivity(Intent.createChooser(intent, "Choose Launcher"));
         }
 
-        //get installed apps
+        // get installed apps
         List<ApplicationInfo> packages = getPackageManager().getInstalledApplications(PackageManager.GET_META_DATA);
         int i = 0;
-        for (i = 0; i < packages.size() && i < MAX_NUMBER_OF_APPS; i++) {
-//            installedApps.add(new ApplicationItem(new Rect(i * 100, 100, 10, 10), BitmapFactory.decodeResource(getResources(), packages.get(i).icon), packages.get(i)));
-            installedApps.add(new ApplicationItem(new Rect(i * 100, 315, 92, 92), packages.get(i), getPackageManager(), getBaseContext()));
-//            installedApps.get(installedApps.size() - 1).icon = BitmapFactory.decodeResource(getResources(), R.drawable.ic_launcher);
+        for (i = 0; i < packages.size() && installedApps.size() < MAX_NUMBER_OF_APPS; i++) {
+            if ((packages.get(i).packageName.toLowerCase().contains("cardboard") || packages.get(i).packageName.toLowerCase().contains("dive") || packages.get(i).packageName.toLowerCase().contains("vr") || packages.get(i).packageName.equals("com.dudeofawesome.SuperHexagon")) && !packages.get(i).packageName.equals("com.dudeofawesome.cardboardhome")) {
+                installedApps.add(new ApplicationItem(new Rect((installedApps.size() - 1) * APP_SPACING, 315, 92, 92), packages.get(i), getPackageManager(), getBaseContext()));
+            }
         }
-        installedApps.add(new ApplicationItem(new Rect(i++ * 100, 315, 92, 92), BitmapFactory.decodeResource(getResources(), R.drawable.settings_icon), 1, getBaseContext()));
-        installedApps.add(new ApplicationItem(new Rect(i * 100, 315, 92, 92), BitmapFactory.decodeResource(getResources(), R.drawable.exit_icon), 0, getBaseContext()));
+
+
+        // attempt to get only Google Cardboard apps
+////        List<ResolveInfo> packages = getPackageManager().queryBroadcastReceivers(new Intent(Intent.ACTION_ALL_APPS, Uri.parse("cardboard://v.1.0.0")), PackageManager.GET_ACTIVITIES);
+//        List<ResolveInfo> packages = getPackageManager().queryIntentActivities(new Intent("android.nfc.action.NDEF_DISCOVERED"), 0);
+//        int i = 0;
+//        System.out.println("There are " + packages.size() + " Cardboard apps");
+//        for (i = 0; i < packages.size() && installedApps.size() < MAX_NUMBER_OF_APPS; i++) {
+//            ApplicationInfo appInfo = packages.get(i).activityInfo.applicationInfo;
+//            installedApps.add(new ApplicationItem(new Rect(i * 100, 315, 92, 92), appInfo, getPackageManager(), getBaseContext()));
+//        }
+
+        installedApps.add(new ApplicationItem(new Rect((installedApps.size() - 1) * APP_SPACING, 315, 92, 92), BitmapFactory.decodeResource(getResources(), R.drawable.settings_icon), 1, getBaseContext()));
+        installedApps.add(new ApplicationItem(new Rect((installedApps.size() - 1) * APP_SPACING, 315, 92, 92), BitmapFactory.decodeResource(getResources(), R.drawable.exit_icon), 0, getBaseContext()));
 
         SensorEventListener mSensorListener = new SensorEventListener() {
             @Override
@@ -103,6 +115,30 @@ public class GameActivity extends Activity implements SensorEventListener {
         mSensorManager.registerListener(mSensorListener, mGyroscope, SensorManager.SENSOR_DELAY_NORMAL);
         mSensorManager.registerListener(mSensorListener, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
 
+    }
+
+    @Override
+    public void onCardboardTrigger() {
+        gameView.magnetPull();
+    }
+
+    @Override
+    public void onRemovedFromCardboard() {
+
+    }
+
+    private void makeImmersive() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
+            getWindow().getDecorView()
+                    .setSystemUiVisibility(
+                            View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                          | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                          | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                          | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                          | View.SYSTEM_UI_FLAG_FULLSCREEN
+                          | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+            );
+        }
     }
 
     public boolean isMyAppLauncherDefault() {
@@ -150,6 +186,7 @@ public class GameActivity extends Activity implements SensorEventListener {
     protected void onResume() {
         super.onResume();
         mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+        makeImmersive();
     }
 
     protected void onPause() {
@@ -173,6 +210,7 @@ public class GameActivity extends Activity implements SensorEventListener {
         int width = 0;
         int height = 0;
         Rect cursorPosition = new Rect(width / 2 - 1, height / 2 - 1, width / 2 + 1, height / 2 + 1);
+        DisplayMetrics displayMetrics = new DisplayMetrics();
 
         long timeOfLastFrame = 0;
 
@@ -195,7 +233,7 @@ public class GameActivity extends Activity implements SensorEventListener {
 //            move();
             width = getWidth() / 2;
             height = getHeight();
-            cursorPosition = new Rect(width / 2 - 10, height / 2 - 10, width / 2 + 10, height / 2 + 10);
+            cursorPosition = new Rect(width / 2 - 1, 0, width / 2 + 1, height);
 
             if (selectedApp == -1) {
                 for (int i = 0; i < GameActivity.installedApps.size(); i++) {
@@ -206,7 +244,6 @@ public class GameActivity extends Activity implements SensorEventListener {
                 }
             }
             else {
-                System.out.println(timeSelected);
                 timeSelected++;
                 if (timeSelected > selectionTime) {
                     GameActivity.installedApps.get(selectedApp).launch();
@@ -219,6 +256,12 @@ public class GameActivity extends Activity implements SensorEventListener {
 
             // cause redraw
             invalidate();
+        }
+
+        public void magnetPull () {
+            if (selectedApp != -1) {
+                GameActivity.installedApps.get(selectedApp).launch();
+            }
         }
 
         private void move () {
@@ -241,23 +284,24 @@ public class GameActivity extends Activity implements SensorEventListener {
 
             // draw left eye
             paint.setColor(Color.parseColor("#CD5C5C"));
+            canvas.drawCircle(width / 2, height / 2, radius * ((float) timeSelected / selectionTime), paint);
+            paint.setStyle(Paint.Style.STROKE);
             canvas.drawCircle(width / 2, height / 2, radius, paint);
+            paint.setStyle(Paint.Style.FILL);
             for (int i = 0; i < GameActivity.installedApps.size(); i++) {
-                GameActivity.installedApps.get(i).x = (int) (GameActivity.installedApps.get(i).pos.left + (((GameActivity.gyroData[1]) != 0.00f ? GameActivity.gyroData[1] : GameActivity.accelData[1]) * 100));
+                GameActivity.installedApps.get(i).x = (int) (GameActivity.installedApps.get(i).pos.left + (((GameActivity.gyroData[0]) != 0.00f ? GameActivity.gyroData[0] : GameActivity.accelData[1]) * 100));
                 if (GameActivity.installedApps.get(i).x < width && GameActivity.installedApps.get(i).x + GameActivity.installedApps.get(i).pos.right > 0) {
-//                    canvas.drawBitmap(GameActivity.installedApps.get(i).icon, xPos - GameActivity.installedApps.get(i).z, GameActivity.installedApps.get(i).pos.top, paint);
-//                    paint.setColor(Color.RED);
-//                    canvas.drawRect(GameActivity.installedApps.get(i).pos.left, GameActivity.installedApps.get(i).pos.top, GameActivity.installedApps.get(i).pos.left + GameActivity.installedApps.get(i).pos.right, GameActivity.installedApps.get(i).pos.top + GameActivity.installedApps.get(i).pos.bottom, paint);
-                    canvas.drawBitmap(GameActivity.installedApps.get(i).icon, null, new Rect((int) GameActivity.installedApps.get(i).x - GameActivity.installedApps.get(i).z, GameActivity.installedApps.get(i).pos.top, (int) GameActivity.installedApps.get(i).x - GameActivity.installedApps.get(i).z + GameActivity.installedApps.get(i).pos.right, GameActivity.installedApps.get(i).pos.top + GameActivity.installedApps.get(i).pos.bottom), paint);
+                    if (i != selectedApp)
+                        canvas.drawBitmap(GameActivity.installedApps.get(i).icon, null, new Rect(GameActivity.installedApps.get(i).x - 1, GameActivity.installedApps.get(i).pos.top, GameActivity.installedApps.get(i).x - 1 + GameActivity.installedApps.get(i).pos.right, GameActivity.installedApps.get(i).pos.top + GameActivity.installedApps.get(i).pos.bottom), paint);
+                    else {
+                        canvas.drawBitmap(GameActivity.installedApps.get(i).icon, null, new Rect(GameActivity.installedApps.get(i).x - 1 - GameActivity.installedApps.get(i).z - 7, GameActivity.installedApps.get(i).pos.top - 7, GameActivity.installedApps.get(i).x - 1 - GameActivity.installedApps.get(i).z + GameActivity.installedApps.get(i).pos.right + 14, GameActivity.installedApps.get(i).pos.top + GameActivity.installedApps.get(i).pos.bottom + 14), paint);
+                        paint.setTextAlign(Paint.Align.CENTER);
+                        paint.setColor(Color.WHITE);
+                        paint.setTextSize(20);
+                        canvas.drawText(GameActivity.installedApps.get(i).name, GameActivity.installedApps.get(i).x + (GameActivity.installedApps.get(i).pos.right / 2), GameActivity.installedApps.get(i).pos.top + 120, paint);
+                    }
                 }
             }
-//            float xPos = GameActivity.installedApps.get(GameActivity.installedApps.size() - 1).pos.left + (((GameActivity.gyroData[1]) != 0.00f ? GameActivity.gyroData[1] : GameActivity.accelData[1]) * 100) + width;
-//            if (xPos > width && xPos < width * 2) {
-//                canvas.drawBitmap(GameActivity.installedApps.get(GameActivity.installedApps.size() - 1).icon, xPos + GameActivity.installedApps.get(GameActivity.installedApps.size() - 1).z, GameActivity.installedApps.get(GameActivity.installedApps.size() - 1).pos.top, paint);
-//                canvas.drawBitmap(GameActivity.installedApps.get(i).icon, null, new Rect(GameActivity.installedApps.get(i).pos.left + width, GameActivity.installedApps.get(i).pos.top, GameActivity.installedApps.get(i).pos.right, GameActivity.installedApps.get(i).pos.bottom), paint);
-//            }
-            paint.setColor(Color.YELLOW);
-            canvas.drawRect(cursorPosition, paint);
 
 
 
@@ -265,11 +309,22 @@ public class GameActivity extends Activity implements SensorEventListener {
             paint.setColor(Color.BLACK);
             canvas.drawRect(width, 0, width * 2, height, paint);
             paint.setColor(Color.parseColor("#CD5C5C"));
+            canvas.drawCircle(width + width / 2, height / 2, radius * ((float) timeSelected / selectionTime), paint);
+            paint.setStyle(Paint.Style.STROKE);
             canvas.drawCircle(width + width / 2, height / 2, radius, paint);
+            paint.setStyle(Paint.Style.FILL);
             for (int i = 0; i < GameActivity.installedApps.size(); i++) {
-                if (GameActivity.installedApps.get(i).x + width > width && GameActivity.installedApps.get(i).x + width < width * 2)
-                    canvas.drawBitmap(GameActivity.installedApps.get(i).icon, null, new Rect((int) GameActivity.installedApps.get(i).x + width + GameActivity.installedApps.get(i).z, GameActivity.installedApps.get(i).pos.top, (int) GameActivity.installedApps.get(i).x + width + GameActivity.installedApps.get(i).z + GameActivity.installedApps.get(i).pos.right, GameActivity.installedApps.get(i).pos.top + GameActivity.installedApps.get(i).pos.bottom), paint);
-//                    canvas.drawBitmap(GameActivity.installedApps.get(i).icon, xPos + GameActivity.installedApps.get(i).z, GameActivity.installedApps.get(i).pos.top, paint);
+                if (GameActivity.installedApps.get(i).x + width > width && GameActivity.installedApps.get(i).x + width < width * 2) {
+                    if (i != selectedApp)
+                        canvas.drawBitmap(GameActivity.installedApps.get(i).icon, null, new Rect(GameActivity.installedApps.get(i).x + width + 1, GameActivity.installedApps.get(i).pos.top, (int) GameActivity.installedApps.get(i).x + width + GameActivity.installedApps.get(i).z + GameActivity.installedApps.get(i).pos.right, GameActivity.installedApps.get(i).pos.top + GameActivity.installedApps.get(i).pos.bottom), paint);
+                    else {
+                        canvas.drawBitmap(GameActivity.installedApps.get(i).icon, null, new Rect(GameActivity.installedApps.get(i).x + width + 1 + GameActivity.installedApps.get(i).z - 7, GameActivity.installedApps.get(i).pos.top - 7, GameActivity.installedApps.get(i).x + 1 + width + GameActivity.installedApps.get(i).z + GameActivity.installedApps.get(i).pos.right + 14, GameActivity.installedApps.get(i).pos.top + GameActivity.installedApps.get(i).pos.bottom + 14), paint);
+                        paint.setTextAlign(Paint.Align.CENTER);
+                        paint.setColor(Color.WHITE);
+                        paint.setTextSize(20);
+                        canvas.drawText(GameActivity.installedApps.get(i).name, GameActivity.installedApps.get(i).x + (GameActivity.installedApps.get(i).pos.right / 2), GameActivity.installedApps.get(i).pos.top + 120, paint);
+                    }
+                }
             }
 
 
