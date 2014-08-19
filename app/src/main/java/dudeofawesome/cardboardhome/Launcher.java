@@ -49,7 +49,8 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
     public static SharedPreferences preferences;
     public Vibrator mVibrator;
     private Bitmap wallpaper;
-    private boolean premium = true;
+    private boolean premium = false;
+    private boolean drawWallpaper = true;
 
     private final int MAX_NUMBER_OF_APPS = 5;
     private final int APP_SPACING = 115;
@@ -71,16 +72,21 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
         }
 
         installedApps.clear();
-        // get installed apps
+        // check for premium package
         List<ApplicationInfo> packages = getPackageManager().getInstalledApplications(PackageManager.GET_META_DATA);
         for (int i = 0; i < packages.size(); i++) {
             if (packages.get(i).packageName.equals("com.dudeofawesome.cardboardhomeunlocker")) {
                 premium = true;
+                preferences.edit().putBoolean("premium", premium);
+                preferences.edit().apply();
+                System.out.println("I'm premium!!!");
                 break;
             }
         }
+        drawWallpaper = preferences.getBoolean("draw_wallpaper", true);
+        // get installed apps
         for (int i = 0; i < packages.size(); i++) {
-            if ((packages.get(i).packageName.toLowerCase().contains("cardboard") || packages.get(i).packageName.toLowerCase().contains("dive") || packages.get(i).packageName.toLowerCase().contains("vr") || packages.get(i).packageName.equals("com.dudeofawesome.SuperHexagon")) && !packages.get(i).packageName.equals("com.dudeofawesome.cardboardhome")) {
+            if ((packages.get(i).packageName.toLowerCase().contains("cardboard") || packages.get(i).packageName.toLowerCase().contains("dive") || packages.get(i).packageName.toLowerCase().contains("vr") || packages.get(i).packageName.equals("com.dudeofawesome.SuperHexagon")) && !packages.get(i).packageName.equals("com.dudeofawesome.cardboardhome") && !packages.get(i).packageName.equals("com.dudeofawesome.cardboardhomeunlocker")) {
                 installedApps.add(new ApplicationItem(new Rect((installedApps.size() - 1) * APP_SPACING, 315, 92, 92), packages.get(i), getPackageManager(), getBaseContext()));
             }
             else {
@@ -249,13 +255,16 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
         private void gameLoop () {
 //            move();
             updateTweens();
-            width = getWidth() / 2;
-            height = getHeight();
-            cursorPosition = new Rect(width / 2 - 1, 0, width / 2 + 1, height);
+            if (width == 0) {
+                width = getWidth() / 2;
+                height = getHeight();
+                cursorPosition = new Rect(width / 2 - 1, 0, width / 2 + 1, height);
+            }
 
             if (selectedApp == -1) {
                 for (int i = 0; i < installedApps.size(); i++) {
-                    if (Rect.intersects(cursorPosition, new Rect(installedApps.get(i).x, installedApps.get(i).pos.top, installedApps.get(i).x + installedApps.get(i).pos.right, installedApps.get(i).pos.top + installedApps.get(i).pos.bottom))) {
+                    freeAllocate.set(installedApps.get(i).x, installedApps.get(i).pos.top, installedApps.get(i).x + installedApps.get(i).pos.right, installedApps.get(i).pos.top + installedApps.get(i).pos.bottom);
+                    if (Rect.intersects(cursorPosition, freeAllocate)) {
                         selectedApp = i;
                         timeSelected = 0;
                     }
@@ -269,7 +278,8 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
                         installedApps.get(selectedApp).launch();
                     }
                 }
-                else if (!Rect.intersects(cursorPosition, new Rect(installedApps.get(selectedApp).x, installedApps.get(selectedApp).pos.top, installedApps.get(selectedApp).x + installedApps.get(selectedApp).pos.right, installedApps.get(selectedApp).pos.top + installedApps.get(selectedApp).pos.bottom))) {
+                freeAllocate.set(installedApps.get(selectedApp).x, installedApps.get(selectedApp).pos.top, installedApps.get(selectedApp).x + installedApps.get(selectedApp).pos.right, installedApps.get(selectedApp).pos.top + installedApps.get(selectedApp).pos.bottom);
+                if (!Rect.intersects(cursorPosition, freeAllocate)) {
                     selectedApp = -1;
                     timeSelected = -1;
                 }
@@ -302,7 +312,7 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
             radius = 100;
 
 
-            if (premium) {
+            if (premium && drawWallpaper) {
                 freeAllocate.set(0, 0, width, height);
                 canvas.drawBitmap(wallpaper, null, freeAllocate, paint);
             }
@@ -340,7 +350,7 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
 
 
             // draw right eye
-            if (premium) {
+            if (premium && drawWallpaper) {
                 freeAllocate.set(width, 0, width * 2, height);
                 canvas.drawBitmap(wallpaper, null, freeAllocate, paint);
             }
@@ -366,7 +376,7 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
                         paint.setTextAlign(Paint.Align.CENTER);
                         paint.setColor(Color.WHITE);
                         paint.setTextSize(20);
-                        canvas.drawText(installedApps.get(i).name, installedApps.get(i).x + (installedApps.get(i).pos.right / 2), installedApps.get(i).pos.top + 120, paint);
+                        canvas.drawText(installedApps.get(i).name, installedApps.get(i).x + (installedApps.get(i).pos.right / 2) + width, installedApps.get(i).pos.top + 120, paint);
                     }
                 }
             }
@@ -382,9 +392,7 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
 
         @Override
         public boolean onTouchEvent(MotionEvent motionEvent) {
-            System.out.println("touchy touchy");
             magnetPull();
-
             return false;
         }
     }

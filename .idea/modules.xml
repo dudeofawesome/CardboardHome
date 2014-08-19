@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/CardboardHome.iml" filepath="$PROJECT_DIR$/CardboardHome.iml" />
+      <module fileurl="file://$PROJECT_DIR$/Unlocker/Unlocker.iml" filepath="$PROJECT_DIR$/Unlocker/Unlocker.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
     </modules>
   </component>

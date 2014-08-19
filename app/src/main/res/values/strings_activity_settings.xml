@@ -7,11 +7,13 @@
     <!-- Example General settings -->
     <string name="pref_header_general">General</string>
 
+    <string name="pref_title_premium">Premium</string>
+
     <string name="pref_title_launch_on_hover">Launch app by keeping selected</string>
     <string name="pref_description_launch_on_hover">Recommended for phones that do not work with the magnetic pull ring</string>
 
-    <string name="pref_title_package_names">Package names of apps to launch</string>
-    <string name="pref_description_package_names">A list of package names seperated by commas, that the app will be able to launch</string>
+    <string name="pref_title_package_names">Additional Cardboard apps</string>
+    <string name="pref_description_package_names">A list of apps separated by commas, that the launcher will display</string>
     <string name="pref_default_package_names">Super Hexagon, ViewR, Other App Name</string>
 
     <!--<string name="pref_title_display_name">Display name</string>-->
