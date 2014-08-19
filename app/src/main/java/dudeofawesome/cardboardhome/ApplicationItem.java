@@ -4,22 +4,15 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
-import android.content.res.Resources;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Rect;
 import android.graphics.drawable.BitmapDrawable;
-import android.preference.Preference;
 
-/**
- * Created by DudeOfAwesome on 8/15/14.
- */
 public class ApplicationItem {
     public int x = 0;
     public Rect pos = new Rect();
     public Bitmap icon;
     public String name = "";
-    public boolean selected = false;
     public int z = 2;
     public ApplicationInfo appInfo;
     private Intent launchIntent;

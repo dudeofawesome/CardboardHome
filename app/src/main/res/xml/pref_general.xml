@@ -6,6 +6,12 @@
         android:summary="@string/pref_description_launch_on_hover"
         android:defaultValue="true" />
 
+    <CheckBoxPreference
+        android:key="use_as_home"
+        android:title="@string/pref_title_use_as_home"
+        android:summary="@string/pref_description_use_as_home"
+        android:defaultValue="true" />
+
     <EditTextPreference
         android:key="package_names_to_add"
         android:title="@string/pref_title_package_names"
@@ -22,9 +28,9 @@
         android:defaultValue="true" />
 
     <CheckBoxPreference
-        android:key="use_as_home"
-        android:title="@string/pref_title_use_as_home"
-        android:summary="@string/pref_description_use_as_home"
+        android:key="draw_wallpaper"
+        android:title="@string/pref_title_draw_wallpaper"
+        android:summary="@string/pref_description_draw_wallpaper"
         android:defaultValue="true" />
 
 </PreferenceScreen>

@@ -2,6 +2,7 @@ package dudeofawesome.cardboardhome;
 
 import android.annotation.TargetApi;
 import android.content.Context;
+import android.content.Intent;
 import android.content.res.Configuration;
 import android.media.Ringtone;
 import android.media.RingtoneManager;
@@ -173,6 +174,11 @@ public class SettingsActivity extends PreferenceActivity {
             bindPreferenceSummaryToValue(findPreference("package_names_to_add"));
             bindPreferenceSummaryToValue(findPreference("example_list"));
         }
+    }
+
+    @Override
+    public void onBackPressed () {
+        startActivity(new Intent(getApplicationContext(), Launcher.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
     }
 
     /**

@@ -64,4 +64,7 @@
 
     <string name="pref_title_use_as_home">Request to be home app</string>
     <string name="pref_description_use_as_home">This makes the VR experience more seamless, and the app relinquishes this setting on exit</string>
+
+    <string name="pref_title_draw_wallpaper">Use the system wallpaper.</string>
+    <string name="pref_description_draw_wallpaper">If not checked, the background will be black</string>
 </resources>

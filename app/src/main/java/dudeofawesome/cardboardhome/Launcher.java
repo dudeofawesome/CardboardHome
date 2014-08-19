@@ -1,5 +1,6 @@
 package dudeofawesome.cardboardhome;
 
+import android.app.WallpaperManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -7,11 +8,13 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
+import android.graphics.drawable.BitmapDrawable;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -21,6 +24,7 @@ import android.os.Vibrator;
 import android.preference.PreferenceManager;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
 
 import com.google.vrtoolkit.cardboard.CardboardActivity;
@@ -44,7 +48,8 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
     private Sensor mGyroscope;
     public static SharedPreferences preferences;
     public Vibrator mVibrator;
-
+    private Bitmap wallpaper;
+    private boolean premium = true;
 
     private final int MAX_NUMBER_OF_APPS = 5;
     private final int APP_SPACING = 115;
@@ -65,9 +70,16 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
             startActivity(intent);
         }
 
+        installedApps.clear();
         // get installed apps
         List<ApplicationInfo> packages = getPackageManager().getInstalledApplications(PackageManager.GET_META_DATA);
-        for (int i = 0; i < packages.size() && installedApps.size() < MAX_NUMBER_OF_APPS; i++) {
+        for (int i = 0; i < packages.size(); i++) {
+            if (packages.get(i).packageName.equals("com.dudeofawesome.cardboardhomeunlocker")) {
+                premium = true;
+                break;
+            }
+        }
+        for (int i = 0; i < packages.size(); i++) {
             if ((packages.get(i).packageName.toLowerCase().contains("cardboard") || packages.get(i).packageName.toLowerCase().contains("dive") || packages.get(i).packageName.toLowerCase().contains("vr") || packages.get(i).packageName.equals("com.dudeofawesome.SuperHexagon")) && !packages.get(i).packageName.equals("com.dudeofawesome.cardboardhome")) {
                 installedApps.add(new ApplicationItem(new Rect((installedApps.size() - 1) * APP_SPACING, 315, 92, 92), packages.get(i), getPackageManager(), getBaseContext()));
             }
@@ -110,6 +122,10 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
         mGyroscope = mSensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
         mSensorManager.registerListener(mSensorListener, mGyroscope, SensorManager.SENSOR_DELAY_NORMAL);
         mSensorManager.registerListener(mSensorListener, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+
+        if (premium) {
+            wallpaper = ((BitmapDrawable) WallpaperManager.getInstance(this).getDrawable()).getBitmap();
+        }
 
     }
 
@@ -181,10 +197,7 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
-        if (id == R.id.action_settings) {
-            return true;
-        }
-        return super.onOptionsItemSelected(item);
+        return (id == R.id.action_settings || super.onOptionsItemSelected(item));
     }
 
     protected void onResume() {
@@ -209,15 +222,12 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
     }
 
 
-
-
-
-
     public class MyView extends View {
         Paint paint = new Paint();
         int width = 0;
         int height = 0;
         Rect cursorPosition = new Rect(width / 2 - 1, height / 2 - 1, width / 2 + 1, height / 2 + 1);
+        private Rect freeAllocate = new Rect();
 
         long timeOfLastFrame = 0;
 
@@ -253,8 +263,11 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
             } else {
                 timeSelected++;
                 if (timeSelected > selectionTime) {
-                    if (preferences.getBoolean("launch_on_hover", true))
+                    if (preferences.getBoolean("launch_on_hover", true)) {
+                        if (preferences.getBoolean("vibrate_on_selection", true))
+                            mVibrator.vibrate(50);
                         installedApps.get(selectedApp).launch();
+                    }
                 }
                 else if (!Rect.intersects(cursorPosition, new Rect(installedApps.get(selectedApp).x, installedApps.get(selectedApp).pos.top, installedApps.get(selectedApp).x + installedApps.get(selectedApp).pos.right, installedApps.get(selectedApp).pos.top + installedApps.get(selectedApp).pos.bottom))) {
                     selectedApp = -1;
@@ -268,7 +281,8 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
 
         public void magnetPull () {
             if (selectedApp != -1) {
-                mVibrator.vibrate(50);
+                if (preferences.getBoolean("vibrate_on_selection", true))
+                    mVibrator.vibrate(50);
                 installedApps.get(selectedApp).launch();
             }
         }
@@ -288,8 +302,14 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
             radius = 100;
 
 
-            paint.setColor(Color.BLACK);
-            canvas.drawPaint(paint);
+            if (premium) {
+                freeAllocate.set(0, 0, width, height);
+                canvas.drawBitmap(wallpaper, null, freeAllocate, paint);
+            }
+            else {
+                paint.setColor(Color.BLACK);
+                canvas.drawPaint(paint);
+            }
 
             // draw left eye
             paint.setColor(Color.parseColor("#CD5C5C"));
@@ -302,10 +322,13 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
             for (int i = 0; i < installedApps.size(); i++) {
                 installedApps.get(i).x = (int) (installedApps.get(i).pos.left + (((gyroData[0]) != 0.00f ? gyroData[0] : accelData) * 100));
                 if (installedApps.get(i).x < width && installedApps.get(i).x + installedApps.get(i).pos.right > 0) {
-                    if (i != selectedApp)
-                        canvas.drawBitmap(installedApps.get(i).icon, null, new Rect(installedApps.get(i).x - 1, installedApps.get(i).pos.top, installedApps.get(i).x - 1 + installedApps.get(i).pos.right, installedApps.get(i).pos.top + installedApps.get(i).pos.bottom), paint);
+                    if (i != selectedApp) {
+                        freeAllocate.set(installedApps.get(i).x - 1, installedApps.get(i).pos.top, installedApps.get(i).x - 1 + installedApps.get(i).pos.right, installedApps.get(i).pos.top + installedApps.get(i).pos.bottom);
+                        canvas.drawBitmap(installedApps.get(i).icon, null, freeAllocate, paint);
+                    }
                     else {
-                        canvas.drawBitmap(installedApps.get(i).icon, null, new Rect(installedApps.get(i).x - 1 - installedApps.get(i).z - 7, installedApps.get(i).pos.top - 7, installedApps.get(i).x - 1 - installedApps.get(i).z + installedApps.get(i).pos.right + 14, installedApps.get(i).pos.top + installedApps.get(i).pos.bottom + 14), paint);
+                        freeAllocate.set(installedApps.get(i).x - 1 - installedApps.get(i).z - 7, installedApps.get(i).pos.top - 7, installedApps.get(i).x - 1 - installedApps.get(i).z + installedApps.get(i).pos.right + 14, installedApps.get(i).pos.top + installedApps.get(i).pos.bottom + 14);
+                        canvas.drawBitmap(installedApps.get(i).icon, null,freeAllocate , paint);
                         paint.setTextAlign(Paint.Align.CENTER);
                         paint.setColor(Color.WHITE);
                         paint.setTextSize(20);
@@ -317,8 +340,14 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
 
 
             // draw right eye
-            paint.setColor(Color.BLACK);
-            canvas.drawRect(width, 0, width * 2, height, paint);
+            if (premium) {
+                freeAllocate.set(width, 0, width * 2, height);
+                canvas.drawBitmap(wallpaper, null, freeAllocate, paint);
+            }
+            else {
+                paint.setColor(Color.BLACK);
+                canvas.drawRect(width, 0, width * 2, height, paint);
+            }
             paint.setColor(Color.parseColor("#CD5C5C"));
             if (preferences.getBoolean("launch_on_hover", true))
                 canvas.drawCircle(width + width / 2, height / 2, radius * ((float) timeSelected / selectionTime), paint);
@@ -327,10 +356,13 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
             paint.setStyle(Paint.Style.FILL);
             for (int i = 0; i < installedApps.size(); i++) {
                 if (installedApps.get(i).x + width > width && installedApps.get(i).x + width < width * 2) {
-                    if (i != selectedApp)
-                        canvas.drawBitmap(installedApps.get(i).icon, null, new Rect(installedApps.get(i).x + width + 1, installedApps.get(i).pos.top, (int) installedApps.get(i).x + width + installedApps.get(i).z + installedApps.get(i).pos.right, installedApps.get(i).pos.top + installedApps.get(i).pos.bottom), paint);
+                    if (i != selectedApp) {
+                        freeAllocate.set(installedApps.get(i).x + width + 1, installedApps.get(i).pos.top, installedApps.get(i).x + width + installedApps.get(i).z + installedApps.get(i).pos.right, installedApps.get(i).pos.top + installedApps.get(i).pos.bottom);
+                        canvas.drawBitmap(installedApps.get(i).icon, null, freeAllocate, paint);
+                    }
                     else {
-                        canvas.drawBitmap(installedApps.get(i).icon, null, new Rect(installedApps.get(i).x + width + 1 + installedApps.get(i).z - 7, installedApps.get(i).pos.top - 7, installedApps.get(i).x + 1 + width + installedApps.get(i).z + installedApps.get(i).pos.right + 14, installedApps.get(i).pos.top + installedApps.get(i).pos.bottom + 14), paint);
+                        freeAllocate.set(installedApps.get(i).x + width + 1 + installedApps.get(i).z - 7, installedApps.get(i).pos.top - 7, installedApps.get(i).x + 1 + width + installedApps.get(i).z + installedApps.get(i).pos.right + 14, installedApps.get(i).pos.top + installedApps.get(i).pos.bottom + 14);
+                        canvas.drawBitmap(installedApps.get(i).icon, null, freeAllocate, paint);
                         paint.setTextAlign(Paint.Align.CENTER);
                         paint.setColor(Color.WHITE);
                         paint.setTextSize(20);
@@ -346,6 +378,14 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
             canvas.drawRect(width - 1, 0, width + 1, height, paint);
 
             gameLoop();
+        }
+
+        @Override
+        public boolean onTouchEvent(MotionEvent motionEvent) {
+            System.out.println("touchy touchy");
+            magnetPull();
+
+            return false;
         }
     }
 }
