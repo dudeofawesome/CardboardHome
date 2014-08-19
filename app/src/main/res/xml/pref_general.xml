@@ -1,13 +1,13 @@
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
 
     <CheckBoxPreference
-        android:key="example_checkbox"
+        android:key="launch_on_hover"
         android:title="@string/pref_title_launch_on_hover"
         android:summary="@string/pref_description_launch_on_hover"
         android:defaultValue="true" />
 
     <EditTextPreference
-        android:key="example_text"
+        android:key="package_names_to_add"
         android:title="@string/pref_title_package_names"
         android:summary="@string/pref_description_package_names"
         android:defaultValue="@string/pref_default_package_names"
@@ -17,8 +17,14 @@
         android:maxLines="1" />
 
     <CheckBoxPreference
-        android:key="notifications_new_message_vibrate"
+        android:key="vibrate_on_selection"
         android:title="@string/pref_title_vibrate"
+        android:defaultValue="true" />
+
+    <CheckBoxPreference
+        android:key="use_as_home"
+        android:title="@string/pref_title_use_as_home"
+        android:summary="@string/pref_description_use_as_home"
         android:defaultValue="true" />
 
 </PreferenceScreen>
