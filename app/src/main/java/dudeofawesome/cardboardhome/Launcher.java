@@ -37,6 +37,7 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
 
     private MyView gameView = null;
     public static ArrayList<ApplicationItem> installedApps = new ArrayList<ApplicationItem>();
+    public int iconCenter = 0;
     public static float accelData = 0f;
     public static float[] gyroData = {0f, 0f, 0f};
     public static float rawAccelData = 0f;
@@ -79,7 +80,6 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
                 premium = true;
                 preferences.edit().putBoolean("premium", premium);
                 preferences.edit().apply();
-                System.out.println("I'm premium!!!");
                 break;
             }
         }
@@ -101,6 +101,7 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
         installedApps.add(new ApplicationItem(new Rect((installedApps.size() - 1) * APP_SPACING, 315, 92, 92), BitmapFactory.decodeResource(getResources(), R.drawable.settings_icon), 1, getBaseContext()));
         installedApps.add(new ApplicationItem(new Rect((installedApps.size() - 1) * APP_SPACING, 315, 92, 92), BitmapFactory.decodeResource(getResources(), R.drawable.exit_icon), 0, getBaseContext()));
 
+        iconCenter = (int) ((((installedApps.size() + 1) / 2) - 4.5) * APP_SPACING);
 
         mVibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
 
@@ -330,7 +331,7 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
             canvas.drawCircle(width / 2, height / 2, radius, paint);
             paint.setStyle(Paint.Style.FILL);
             for (int i = 0; i < installedApps.size(); i++) {
-                installedApps.get(i).x = (int) (installedApps.get(i).pos.left + (((gyroData[0]) != 0.00f ? gyroData[0] : accelData) * 100));
+                installedApps.get(i).x = (int) (installedApps.get(i).pos.left + (((gyroData[0]) != 0.00f ? gyroData[0] : accelData) * 100)) - iconCenter;
                 if (installedApps.get(i).x < width && installedApps.get(i).x + installedApps.get(i).pos.right > 0) {
                     if (i != selectedApp) {
                         freeAllocate.set(installedApps.get(i).x - 1, installedApps.get(i).pos.top, installedApps.get(i).x - 1 + installedApps.get(i).pos.right, installedApps.get(i).pos.top + installedApps.get(i).pos.bottom);
