@@ -28,6 +28,9 @@ import android.view.MotionEvent;
 import android.view.View;
 
 import com.google.vrtoolkit.cardboard.CardboardActivity;
+import com.google.vrtoolkit.cardboard.CardboardDeviceParams;
+import com.google.vrtoolkit.cardboard.sensors.MagnetSensor;
+import com.google.vrtoolkit.cardboard.sensors.NfcSensor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -53,7 +56,6 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
     private boolean premium = false;
     private boolean drawWallpaper = true;
 
-    private final int MAX_NUMBER_OF_APPS = 5;
     private final int APP_SPACING = 115;
 
     @Override
@@ -130,6 +132,29 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
         mSensorManager.registerListener(mSensorListener, mGyroscope, SensorManager.SENSOR_DELAY_NORMAL);
         mSensorManager.registerListener(mSensorListener, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
 
+        MagnetSensor magnetSensor = new MagnetSensor(getApplicationContext());
+        MagnetSensor.OnCardboardTriggerListener magnetTriggerListener = new MagnetSensor.OnCardboardTriggerListener() {
+            @Override
+            public void onCardboardTrigger() {
+                gameView.magnetPull();
+            }
+        };
+        magnetSensor.setOnCardboardTriggerListener(magnetTriggerListener);
+        magnetSensor.start();
+
+//        NfcSensor nfcSensor = NfcSensor.getInstance(getApplicationContext());
+        NfcSensor.OnCardboardNfcListener nfcListener = new NfcSensor.OnCardboardNfcListener() {
+            @Override
+            public void onInsertedIntoCardboard(CardboardDeviceParams cardboardDeviceParams) {
+
+            }
+
+            @Override
+            public void onRemovedFromCardboard() {
+                installedApps.get(installedApps.size() - 1).launch();
+            }
+        };
+
         if (premium) {
             wallpaper = ((BitmapDrawable) WallpaperManager.getInstance(this).getDrawable()).getBitmap();
         }
@@ -142,16 +167,6 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
         gyroData[0] = (rawGyroData[0] + gyroDataOld[0]) / 2;
         gyroData[1] = (rawGyroData[1] + gyroDataOld[1]) / 2;
         gyroData[2] = (rawGyroData[2] + gyroDataOld[2]) / 2;
-    }
-
-    @Override
-    public void onCardboardTrigger() {
-        gameView.magnetPull();
-    }
-
-    @Override
-    public void onRemovedFromCardboard() {
-        installedApps.get(installedApps.size() - 1).launch();
     }
 
     private void makeImmersive() {
