@@ -42,11 +42,11 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
     public static ArrayList<ApplicationItem> installedApps = new ArrayList<ApplicationItem>();
     public int iconCenter = 0;
     public static float accelData = 0f;
-    public static float[] gyroData = {0f, 0f, 0f};
+    public static float gyroData = 0f;
     public static float rawAccelData = 0f;
-    public static float[] rawGyroData = {0f, 0f, 0f};
+    public static float rawGyroData = 0f;
     public static float accelDataOld = 0f;
-    public static float[] gyroDataOld = {0f, 0f, 0f};
+    public static float gyroDataOld = 0f;
     private SensorManager mSensorManager;
     private Sensor mAccelerometer;
     private Sensor mGyroscope;
@@ -125,7 +125,8 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
                 }
                 else if (sensor.getType() == Sensor.TYPE_GYROSCOPE) {
                     gyroDataOld = rawGyroData;
-                    rawGyroData = event.values;
+                    rawGyroData = event.values[0];
+                    tweenStep = (rawGyroData - gyroData) / TWEEN_TIMING;
                 }
             }
         };
@@ -166,12 +167,8 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
     }
 
     private void updateTweens() {
-//        accelData = (rawAccelData + accelDataOld) / 2;
         accelData += tweenStep;
-
-        gyroData[0] = (rawGyroData[0] + gyroDataOld[0]) / 2;
-        gyroData[1] = (rawGyroData[1] + gyroDataOld[1]) / 2;
-        gyroData[2] = (rawGyroData[2] + gyroDataOld[2]) / 2;
+        gyroData += tweenStep;
     }
 
     private void prepareToLaunch (ApplicationItem app) {
@@ -377,7 +374,7 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
             }
             paint.setStyle(Paint.Style.FILL);
             for (int i = 0; i < installedApps.size(); i++) {
-                installedApps.get(i).x = (int) (installedApps.get(i).pos.left + (((gyroData[0]) != 0.00f ? gyroData[0] : accelData) * 100)) - iconCenter;
+                installedApps.get(i).x = (int) (installedApps.get(i).pos.left + (((rawGyroData) != 0.00f ? gyroData : accelData) * 100)) - iconCenter;
                 if (installedApps.get(i).x < width && installedApps.get(i).x + installedApps.get(i).pos.right > 0) {
                     if (i != selectedApp) {
                         freeAllocate.set(installedApps.get(i).x - 1, installedApps.get(i).pos.top, installedApps.get(i).x - 1 + installedApps.get(i).pos.right, installedApps.get(i).pos.top + installedApps.get(i).pos.bottom);
