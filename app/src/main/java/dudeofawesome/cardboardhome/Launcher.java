@@ -50,13 +50,17 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
     private SensorManager mSensorManager;
     private Sensor mAccelerometer;
     private Sensor mGyroscope;
+    private float tweenStep = 0;
     public static SharedPreferences preferences;
     public Vibrator mVibrator;
     private Bitmap wallpaper;
     private boolean premium = false;
     private boolean drawWallpaper = true;
+    private boolean startingApp = false;
+    private ApplicationItem appToLaunch = null;
 
     private final int APP_SPACING = 115;
+    private final float TWEEN_TIMING = 0.5f * 60;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -80,8 +84,7 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
         for (int i = 0; i < packages.size(); i++) {
             if (packages.get(i).packageName.equals("com.dudeofawesome.cardboardhomeunlocker")) {
                 premium = true;
-                preferences.edit().putBoolean("premium", premium);
-                preferences.edit().apply();
+                preferences.edit().putBoolean("premium", premium).commit();
                 break;
             }
         }
@@ -118,6 +121,7 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
                 if (sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
                     accelDataOld = rawAccelData;
                     rawAccelData = event.values[1];
+                    tweenStep = (rawAccelData - accelData) / TWEEN_TIMING;
                 }
                 else if (sensor.getType() == Sensor.TYPE_GYROSCOPE) {
                     gyroDataOld = rawGyroData;
@@ -162,11 +166,22 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
     }
 
     private void updateTweens() {
-        accelData = (rawAccelData + accelDataOld) / 2;
+//        accelData = (rawAccelData + accelDataOld) / 2;
+        accelData += tweenStep;
 
         gyroData[0] = (rawGyroData[0] + gyroDataOld[0]) / 2;
         gyroData[1] = (rawGyroData[1] + gyroDataOld[1]) / 2;
         gyroData[2] = (rawGyroData[2] + gyroDataOld[2]) / 2;
+    }
+
+    private void prepareToLaunch (ApplicationItem app) {
+        appToLaunch = app;
+        startingApp = true;
+    }
+
+    private void launchApp () {
+        appToLaunch.launch();
+        startingApp = false;
     }
 
     private void makeImmersive() {
@@ -245,10 +260,11 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
 
 
     public class MyView extends View {
-        Paint paint = new Paint();
-        int width = 0;
-        int height = 0;
-        Rect cursorPosition = new Rect(width / 2 - 1, height / 2 - 1, width / 2 + 1, height / 2 + 1);
+        private Paint paint = new Paint();
+        private int width = 0;
+        private int height = 0;
+        private Rect cursorPosition = new Rect(width / 2 - 1, height / 2 - 1, width / 2 + 1, height / 2 + 1);
+        private int appStartAnimationPosition = 0;
         private Rect freeAllocate = new Rect();
 
         long timeOfLastFrame = 0;
@@ -291,13 +307,23 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
                     if (preferences.getBoolean("launch_on_hover", true)) {
                         if (preferences.getBoolean("vibrate_on_selection", true))
                             mVibrator.vibrate(50);
-                        installedApps.get(selectedApp).launch();
+//                        installedApps.get(selectedApp).launch();
+                        prepareToLaunch(installedApps.get(selectedApp));
                     }
                 }
                 freeAllocate.set(installedApps.get(selectedApp).x, installedApps.get(selectedApp).pos.top, installedApps.get(selectedApp).x + installedApps.get(selectedApp).pos.right, installedApps.get(selectedApp).pos.top + installedApps.get(selectedApp).pos.bottom);
                 if (!Rect.intersects(cursorPosition, freeAllocate)) {
                     selectedApp = -1;
                     timeSelected = -1;
+                }
+            }
+
+            if (startingApp) {
+                if (appStartAnimationPosition > width / 2 && appStartAnimationPosition > height / 2) {
+                    launchApp();
+                }
+                else {
+                    appStartAnimationPosition += 17;
                 }
             }
 
@@ -309,7 +335,8 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
             if (selectedApp != -1) {
                 if (preferences.getBoolean("vibrate_on_selection", true))
                     mVibrator.vibrate(50);
-                installedApps.get(selectedApp).launch();
+//                installedApps.get(selectedApp).launch();
+                prepareToLaunch(installedApps.get(selectedApp));
             }
         }
 
@@ -345,6 +372,10 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
             paint.setStrokeWidth(3);
             canvas.drawCircle(width / 2, height / 2, radius, paint);
             paint.setStyle(Paint.Style.FILL);
+            if (startingApp) {
+                canvas.drawCircle(width / 2, height / 2, appStartAnimationPosition, paint);
+            }
+            paint.setStyle(Paint.Style.FILL);
             for (int i = 0; i < installedApps.size(); i++) {
                 installedApps.get(i).x = (int) (installedApps.get(i).pos.left + (((gyroData[0]) != 0.00f ? gyroData[0] : accelData) * 100)) - iconCenter;
                 if (installedApps.get(i).x < width && installedApps.get(i).x + installedApps.get(i).pos.right > 0) {
@@ -378,7 +409,12 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
             if (preferences.getBoolean("launch_on_hover", true))
                 canvas.drawCircle(width + width / 2, height / 2, radius * ((float) timeSelected / selectionTime), paint);
             paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(3);
             canvas.drawCircle(width + width / 2, height / 2, radius, paint);
+            paint.setStyle(Paint.Style.FILL);
+            if (startingApp) {
+                canvas.drawCircle(width + width / 2, height / 2, appStartAnimationPosition, paint);
+            }
             paint.setStyle(Paint.Style.FILL);
             for (int i = 0; i < installedApps.size(); i++) {
                 if (installedApps.get(i).x + width > width && installedApps.get(i).x + width < width * 2) {
