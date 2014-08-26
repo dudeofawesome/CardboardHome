@@ -13,7 +13,7 @@ public class ApplicationItem {
     public Rect pos = new Rect();
     public Bitmap icon;
     public String name = "";
-    public int z = 2;
+    public int z = 10;
     public ApplicationInfo appInfo;
     private Intent launchIntent;
     private Context context;

@@ -19,13 +19,17 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.media.AudioManager;
 import android.os.Bundle;
 import android.os.Vibrator;
 import android.preference.PreferenceManager;
+import android.speech.RecognitionListener;
+import android.speech.RecognizerIntent;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
+import android.speech.SpeechRecognizer;
 
 import com.google.vrtoolkit.cardboard.CardboardActivity;
 import com.google.vrtoolkit.cardboard.CardboardDeviceParams;
@@ -58,6 +62,11 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
     private boolean drawWallpaper = true;
     private boolean startingApp = false;
     private ApplicationItem appToLaunch = null;
+    private SpeechRecognizer speechRecog = null;
+    private Intent recognizerIntent = null;
+    private boolean readyToListen = false;
+    private boolean listening = false;
+    private int originalVolume = 0;
 
     private final int APP_SPACING = 115;
     private final float TWEEN_TIMING = 0.5f * 60;
@@ -160,6 +169,95 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
             }
         };
 
+        AudioManager mgr = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
+        originalVolume = mgr.getStreamVolume(AudioManager.STREAM_MUSIC);
+        mgr.setStreamVolume(AudioManager.STREAM_MUSIC, 0, AudioManager.FLAG_REMOVE_SOUND_AND_VIBRATE);
+
+        RecognitionListener recognitionListener = new RecognitionListener() {
+            @Override
+            public void onReadyForSpeech(Bundle bundle) {
+
+            }
+
+            @Override
+            public void onBeginningOfSpeech() {
+                System.out.println("started listening");
+            }
+
+            @Override
+            public void onRmsChanged(float v) {
+
+            }
+
+            @Override
+            public void onBufferReceived(byte[] bytes) {
+
+            }
+
+            @Override
+            public void onEndOfSpeech() {
+                System.out.println("stopped listening");
+                listening = false;
+            }
+
+            @Override
+            public void onError(int i) {
+
+            }
+
+            @Override
+            public void onResults(Bundle bundle) {
+                ArrayList<String> voiceText = bundle.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+                for (int i = 0; i < voiceText.size(); i++) {
+                    if (voiceText.get(i).toLowerCase().contains("okay cardboard") && voiceText.get(i).toLowerCase().split("okay cardboard").length > 0) {
+                        String request = voiceText.get(i).toLowerCase().split("okay cardboard")[1].toLowerCase().replace(" ", "");
+                        for (int j = 0; j < installedApps.size(); j++) {
+                            if (request.contains(installedApps.get(j).name.toLowerCase().replace(" ", ""))) {
+                                installedApps.get(j).launch();
+                                break;
+                            }
+                        }
+                    }
+                }
+                System.out.println("stopped listening");
+                listening = false;
+            }
+
+            @Override
+            public void onPartialResults(Bundle bundle) {
+                ArrayList<String> voiceText = bundle.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+                for (int i = 0; i < voiceText.size(); i++) {
+                    if (voiceText.get(i).toLowerCase().contains("okay cardboard") && voiceText.get(i).toLowerCase().split("okay cardboard").length > 0) {
+                        String request = voiceText.get(i).toLowerCase().split("okay cardboard")[1].toLowerCase().replace(" ", "");
+                        for (int j = 0; j < installedApps.size(); j++) {
+                            if (request.contains(installedApps.get(j).name.toLowerCase().replace(" ", ""))) {
+                                installedApps.get(j).launch();
+                                break;
+                            }
+                        }
+                    }
+                }
+                System.out.println("stopped listening");
+                listening = false;
+            }
+
+            @Override
+            public void onEvent(int i, Bundle bundle) {
+
+            }
+        };
+
+        recognizerIntent = RecognizerIntent.getVoiceDetailsIntent(getBaseContext());
+        recognizerIntent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 30000);
+        recognizerIntent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 30000);
+        recognizerIntent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 30000);
+        speechRecog = SpeechRecognizer.createSpeechRecognizer(getBaseContext());
+        speechRecog.setRecognitionListener(recognitionListener);
+        readyToListen = true;
+        listening = true;
+        if (preferences.getBoolean("listen_for_voice", true))
+            speechRecog.startListening(recognizerIntent);
+
         if (premium) {
             wallpaper = ((BitmapDrawable) WallpaperManager.getInstance(this).getDrawable()).getBitmap();
         }
@@ -177,8 +275,10 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
     }
 
     private void launchApp () {
-        appToLaunch.launch();
+        AudioManager mgr = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
+        mgr.setStreamVolume(AudioManager.STREAM_MUSIC, originalVolume, AudioManager.FLAG_REMOVE_SOUND_AND_VIBRATE);
         startingApp = false;
+        appToLaunch.launch();
     }
 
     private void makeImmersive() {
@@ -324,6 +424,11 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
                 }
             }
 
+            if (readyToListen /*&& !listening*/ && preferences.getBoolean("listen_for_voice", true)) {
+                listening = true;
+                speechRecog.startListening(recognizerIntent);
+            }
+
             // cause redraw
             invalidate();
         }
@@ -334,6 +439,10 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
                     mVibrator.vibrate(50);
 //                installedApps.get(selectedApp).launch();
                 prepareToLaunch(installedApps.get(selectedApp));
+            }
+            else if (readyToListen /*&& !listening*/ && preferences.getBoolean("listen_for_voice", true)) {
+                listening = true;
+                speechRecog.startListening(recognizerIntent);
             }
         }
 

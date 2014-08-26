@@ -69,4 +69,7 @@
 
     <string name="pref_title_draw_wallpaper">Use the system wallpaper.</string>
     <string name="pref_description_draw_wallpaper">If not checked, the background will be black</string>
+
+    <string name="pref_title_listen_for_voice">Listen for voice commands.</string>
+    <string name="pref_description_listen_for_voice">Launch apps on voice command</string>
 </resources>
