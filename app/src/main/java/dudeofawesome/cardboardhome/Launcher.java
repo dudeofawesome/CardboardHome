@@ -171,7 +171,8 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
 
         AudioManager mgr = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
         originalVolume = mgr.getStreamVolume(AudioManager.STREAM_MUSIC);
-        mgr.setStreamVolume(AudioManager.STREAM_MUSIC, 0, AudioManager.FLAG_REMOVE_SOUND_AND_VIBRATE);
+        if (preferences.getBoolean("listen_for_voice", true))
+            mgr.setStreamVolume(AudioManager.STREAM_MUSIC, 0, AudioManager.FLAG_REMOVE_SOUND_AND_VIBRATE);
 
         RecognitionListener recognitionListener = new RecognitionListener() {
             @Override
