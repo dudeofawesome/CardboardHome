@@ -70,6 +70,9 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
 
     private final int APP_SPACING = 115;
     private final float TWEEN_TIMING = 0.5f * 60;
+    private final String[] LAUNCH_COMMANDS = {"open", "launch", "play", "start", "begin"};
+    private final String[] EXIT_COMMANDS = {"exit", "close", "quit", "stop"};
+    private final String[] SETTINGS_COMMANDS = {"preferences", "settings", "options"};
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -112,8 +115,8 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
                 }
             }
         }
-        installedApps.add(new ApplicationItem(new Rect((installedApps.size() - 1) * APP_SPACING, 315, 92, 92), BitmapFactory.decodeResource(getResources(), R.drawable.settings_icon), 1, getBaseContext()));
-        installedApps.add(new ApplicationItem(new Rect((installedApps.size() - 1) * APP_SPACING, 315, 92, 92), BitmapFactory.decodeResource(getResources(), R.drawable.exit_icon), 0, getBaseContext()));
+        installedApps.add(new ApplicationItem(new Rect((installedApps.size() - 1) * APP_SPACING, 315, 92, 92), BitmapFactory.decodeResource(getResources(), R.drawable.settings_icon), 1, getPackageManager(), getBaseContext()));
+        installedApps.add(new ApplicationItem(new Rect((installedApps.size() - 1) * APP_SPACING, 315, 92, 92), BitmapFactory.decodeResource(getResources(), R.drawable.exit_icon), 0, getPackageManager(), getBaseContext()));
 
         iconCenter = (int) ((((installedApps.size() + 1) / 2) - 4.5) * APP_SPACING);
 
@@ -182,7 +185,7 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
 
             @Override
             public void onBeginningOfSpeech() {
-                System.out.println("started listening");
+                listening = true;
             }
 
             @Override
@@ -197,7 +200,6 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
 
             @Override
             public void onEndOfSpeech() {
-                System.out.println("stopped listening");
                 listening = false;
             }
 
@@ -208,38 +210,47 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
 
             @Override
             public void onResults(Bundle bundle) {
-                ArrayList<String> voiceText = bundle.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
-                for (int i = 0; i < voiceText.size(); i++) {
-                    if (voiceText.get(i).toLowerCase().contains("okay cardboard") && voiceText.get(i).toLowerCase().split("okay cardboard").length > 0) {
-                        String request = voiceText.get(i).toLowerCase().split("okay cardboard")[1].toLowerCase().replace(" ", "");
-                        for (int j = 0; j < installedApps.size(); j++) {
-                            if (request.contains(installedApps.get(j).name.toLowerCase().replace(" ", ""))) {
-                                installedApps.get(j).launch();
-                                break;
-                            }
-                        }
-                    }
-                }
-                System.out.println("stopped listening");
+                checkForCommands(bundle);
                 listening = false;
             }
 
             @Override
             public void onPartialResults(Bundle bundle) {
+                checkForCommands(bundle);
+            }
+
+            private void checkForCommands(Bundle bundle) {
                 ArrayList<String> voiceText = bundle.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
                 for (int i = 0; i < voiceText.size(); i++) {
                     if (voiceText.get(i).toLowerCase().contains("okay cardboard") && voiceText.get(i).toLowerCase().split("okay cardboard").length > 0) {
                         String request = voiceText.get(i).toLowerCase().split("okay cardboard")[1].toLowerCase().replace(" ", "");
-                        for (int j = 0; j < installedApps.size(); j++) {
-                            if (request.contains(installedApps.get(j).name.toLowerCase().replace(" ", ""))) {
-                                installedApps.get(j).launch();
-                                break;
+                        print(request);
+                        for (int j = 0; j < LAUNCH_COMMANDS.length; j++) {
+                            if (request.contains(LAUNCH_COMMANDS[j])) {
+                                print(request);
+                                for (int k = 0; k < installedApps.size(); k++) {
+                                    if (request.contains(installedApps.get(k).name.toLowerCase().replace(" ", ""))) {
+                                        mVibrator.vibrate(90);
+                                        installedApps.get(k).launch();
+                                        return;
+                                    }
+                                }
+                            }
+                        }
+                        for (int j = 0; j < EXIT_COMMANDS.length; j++) {
+                            if (request.contains(EXIT_COMMANDS[j])) {
+                                installedApps.get(installedApps.size() - 1).launch();
+                                return;
+                            }
+                        }
+                        for (int j = 0; j < SETTINGS_COMMANDS.length; j++) {
+                            if (request.contains(SETTINGS_COMMANDS[j])) {
+                                installedApps.get(installedApps.size() - 2).launch();
+                                return;
                             }
                         }
                     }
                 }
-                System.out.println("stopped listening");
-                listening = false;
             }
 
             @Override
@@ -263,6 +274,10 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
             wallpaper = ((BitmapDrawable) WallpaperManager.getInstance(this).getDrawable()).getBitmap();
         }
 
+    }
+
+    private void print(String request) {
+        System.out.println(request);
     }
 
     private void updateTweens() {

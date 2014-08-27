@@ -29,15 +29,23 @@ public class ApplicationItem {
         this.context = context;
     }
 
-    public ApplicationItem (Rect pos, Bitmap icon, int type, Context context) {
+    public ApplicationItem (Rect pos, Bitmap icon, int type, PackageManager pkgMan, Context context) {
         this.pos = pos;
         this.icon = icon;
         if (type == 0) {
             this.name = "Exit Google Cardboard";
-            this.launchIntent = new Intent(Intent.ACTION_MAIN);
-            this.launchIntent.addCategory(Intent.CATEGORY_HOME);
-            this.launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            this.launchIntent.setClassName("android", "com.android.internal.app.ResolverActivity");
+            if (Launcher.preferences.getBoolean("use_as_home", true)) {
+                this.launchIntent = new Intent(Intent.ACTION_MAIN);
+                this.launchIntent.addCategory(Intent.CATEGORY_HOME);
+                this.launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                this.launchIntent.setClassName("android", "com.android.internal.app.ResolverActivity");
+            }
+            else {
+                Intent intent = new Intent(Intent.ACTION_MAIN);
+                intent.addCategory(Intent.CATEGORY_HOME);
+                String currentHomePackage = pkgMan.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY).activityInfo.packageName;
+                this.launchIntent = pkgMan.getLaunchIntentForPackage(currentHomePackage);
+            }
         }
         else {
             this.name = "Preferences";
