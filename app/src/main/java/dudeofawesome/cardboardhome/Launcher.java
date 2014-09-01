@@ -33,6 +33,7 @@ import android.speech.SpeechRecognizer;
 
 import com.google.vrtoolkit.cardboard.CardboardActivity;
 import com.google.vrtoolkit.cardboard.CardboardDeviceParams;
+import com.google.vrtoolkit.cardboard.sensors.HeadTracker;
 import com.google.vrtoolkit.cardboard.sensors.MagnetSensor;
 import com.google.vrtoolkit.cardboard.sensors.NfcSensor;
 
@@ -42,18 +43,19 @@ import java.util.List;
 
 public class Launcher extends CardboardActivity implements SensorEventListener {
 
+    public static final double TAU = Math.PI * 2;
     private MyView gameView = null;
     public static ArrayList<ApplicationItem> installedApps = new ArrayList<ApplicationItem>();
     public int iconCenter = 0;
     public static float accelData = 0f;
-    public static float gyroData = 0f;
     public static float rawAccelData = 0f;
     public static float rawGyroData = 0f;
     public static float accelDataOld = 0f;
-    public static float gyroDataOld = 0f;
     private SensorManager mSensorManager;
     private Sensor mAccelerometer;
     private Sensor mGyroscope;
+    private HeadTracker headTracker;
+    private boolean forceAccelerometer = false;
     private float tweenStep = 0;
     public static SharedPreferences preferences;
     public Vibrator mVibrator;
@@ -103,7 +105,7 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
         drawWallpaper = preferences.getBoolean("draw_wallpaper", true);
         // get installed apps
         for (int i = 0; i < packages.size(); i++) {
-            if ((packages.get(i).packageName.toLowerCase().contains("cardboard") || packages.get(i).packageName.toLowerCase().contains("dive") || packages.get(i).packageName.toLowerCase().contains("vr") || packages.get(i).packageName.equals("com.dudeofawesome.SuperHexagon")) && !packages.get(i).packageName.equals("com.dudeofawesome.cardboardhome") && !packages.get(i).packageName.equals("com.dudeofawesome.cardboardhomeunlocker")) {
+            if ((packages.get(i).packageName.toLowerCase().contains("cardboard") || packages.get(i).packageName.toLowerCase().contains("dive") || packages.get(i).packageName.toLowerCase().contains("vr") || packages.get(i).packageName.toLowerCase().contains("virtual") || packages.get(i).packageName.toLowerCase().contains("reality") || packages.get(i).packageName.equals("com.dudeofawesome.SuperHexagon")) && !packages.get(i).packageName.equals("com.dudeofawesome.cardboardhome") && !packages.get(i).packageName.equals("com.dudeofawesome.cardboardhomeunlocker")) {
                 installedApps.add(new ApplicationItem(new Rect((installedApps.size() - 1) * APP_SPACING, 315, 92, 92), packages.get(i), getPackageManager(), getBaseContext()));
             }
             else {
@@ -136,18 +138,18 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
                     tweenStep = (rawAccelData - accelData) / TWEEN_TIMING;
                 }
                 else if (sensor.getType() == Sensor.TYPE_GYROSCOPE) {
-                    gyroDataOld = rawGyroData;
-                    rawGyroData = event.values[0];
-                    tweenStep = (rawGyroData - gyroData) / TWEEN_TIMING;
+                    rawGyroData += event.values[0];
                 }
             }
         };
 
         mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         mGyroscope = mSensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
+        mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         mSensorManager.registerListener(mSensorListener, mGyroscope, SensorManager.SENSOR_DELAY_NORMAL);
         mSensorManager.registerListener(mSensorListener, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+        headTracker = new HeadTracker(getApplicationContext());
+        headTracker.startTracking();
 
         MagnetSensor magnetSensor = new MagnetSensor(getApplicationContext());
         MagnetSensor.OnCardboardTriggerListener magnetTriggerListener = new MagnetSensor.OnCardboardTriggerListener() {
@@ -282,7 +284,6 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
 
     private void updateTweens() {
         accelData += tweenStep;
-        gyroData += tweenStep;
     }
 
     private void prepareToLaunch (ApplicationItem app) {
@@ -398,7 +399,7 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
         private final long selectionTime = 200;
 
         private void gameLoop () {
-//            move();
+            move();
             updateTweens();
             if (width == 0) {
                 width = getWidth() / 2;
@@ -462,11 +463,95 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
             }
         }
 
+        float headFloats[] = new float[16];
+
         private void move () {
-            int deltaTime = (int) (System.currentTimeMillis() - timeOfLastFrame);
+//            int deltaTime = (int) (System.currentTimeMillis() - timeOfLastFrame);
             for (int i = 0; i < installedApps.size(); i++) {
-                installedApps.get(i).move(deltaTime);
+                installedApps.get(i).pos.top = (height / 2) - (installedApps.get(i).pos.bottom / 2);
+                if (rawGyroData == 0.0000f || forceAccelerometer) {
+                    installedApps.get(i).x = (int) (installedApps.get(i).pos.left + (accelData * 100)) - iconCenter;
+                }
+                else {
+                    headTracker.getLastHeadView(headFloats, 0);
+                    float rotation = getRotFromMat(headFloats)[0];
+                    rotation = normalizeRotation(rotation);
+
+                    installedApps.get(i).x = (int) (installedApps.get(i).pos.left + (rotation * 500)) - iconCenter;
+//                    System.out.print("\n ___ \r0 ");
+//                    for (int o = 0; o < headFloats.length; o++) {
+//                        System.out.print(headFloats[o] + "\t");
+//                        switch(o) {
+//                            case 3 : case 7 : case 11 :
+//                                System.out.print("\r" + ((int) ((o+1) / 4)) + " ");
+//                                break;
+//                        }
+//                    }
+//                    System.out.println(getRotFromMat(headFloats)[0]);
+                }
             }
+        }
+
+        float normalizeRotation (float rot) {
+            if (rot > TAU)
+                rot -= TAU;
+            else if (rot < -TAU)
+                rot += TAU;
+            else
+                return rot;
+
+            return normalizeRotation(rot);
+        }
+
+        float[] getRotFromMat(float[] rotMatrix) {
+            float x, y, z;
+
+            float _11, _12, _13, _14;
+            float _21, _22, _23, _24;
+            float _31, _32, _33, _34;
+            float _41, _42, _43, _44;
+
+            _11 = rotMatrix[0];
+            _12 = rotMatrix[1];
+            _13 = rotMatrix[2];
+            _14 = rotMatrix[3];
+
+            _21 = rotMatrix[4];
+            _22 = rotMatrix[5];
+            _23 = rotMatrix[6];
+            _24 = rotMatrix[7];
+
+            _31 = rotMatrix[8];
+            _32 = rotMatrix[9];
+            _33 = rotMatrix[10];
+            _34 = rotMatrix[11];
+
+            _41 = rotMatrix[12];
+            _42 = rotMatrix[13];
+            _43 = rotMatrix[14];
+            _44 = rotMatrix[15];
+
+            if (_11 == 1.0f)
+            {
+                x = (float) Math.atan2(_13, _34);
+                y = 0;
+                z = 0;
+
+            }else if (_11 == -1.0f)
+            {
+                x = (float) Math.atan2(_13, _34);
+                y = 0;
+                z = 0;
+            }else
+            {
+
+                x = (float) Math.atan2(-_31,_11);
+                y = (float) Math.asin(_21);
+                z = (float) Math.atan2(-_23,_22);
+            }
+
+            float[] _return = {x, y, z};
+            return _return;
         }
 
         @Override
@@ -486,6 +571,8 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
                 canvas.drawPaint(paint);
             }
 
+            paint.setAntiAlias(true);
+
             // draw left eye
             paint.setColor(Color.parseColor("#CD5C5C"));
             if (preferences.getBoolean("launch_on_hover", true))
@@ -499,7 +586,6 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
             }
             paint.setStyle(Paint.Style.FILL);
             for (int i = 0; i < installedApps.size(); i++) {
-                installedApps.get(i).x = (int) (installedApps.get(i).pos.left + (((rawGyroData) != 0.00f ? gyroData : accelData) * 100)) - iconCenter;
                 if (installedApps.get(i).x < width && installedApps.get(i).x + installedApps.get(i).pos.right > 0) {
                     if (i != selectedApp) {
                         freeAllocate.set(installedApps.get(i).x - 1, installedApps.get(i).pos.top, installedApps.get(i).x - 1 + installedApps.get(i).pos.right, installedApps.get(i).pos.top + installedApps.get(i).pos.bottom);
