@@ -437,7 +437,7 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
                     launchApp();
                 }
                 else {
-                    appStartAnimationPosition += 17;
+                    appStartAnimationPosition += 30;
                 }
             }
 
@@ -466,7 +466,6 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
         float headFloats[] = new float[16];
 
         private void move () {
-//            int deltaTime = (int) (System.currentTimeMillis() - timeOfLastFrame);
             for (int i = 0; i < installedApps.size(); i++) {
                 installedApps.get(i).pos.top = (height / 2) - (installedApps.get(i).pos.bottom / 2);
                 if (rawGyroData == 0.0000f || forceAccelerometer) {
@@ -592,7 +591,7 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
                         canvas.drawBitmap(installedApps.get(i).icon, null, freeAllocate, paint);
                     }
                     else {
-                        freeAllocate.set(installedApps.get(i).x - 1 - installedApps.get(i).z - 7, installedApps.get(i).pos.top - 7, installedApps.get(i).x - 1 - installedApps.get(i).z + installedApps.get(i).pos.right + 14, installedApps.get(i).pos.top + installedApps.get(i).pos.bottom + 14);
+                        freeAllocate.set(installedApps.get(i).x - 1 - installedApps.get(i).z - 7 - 4, installedApps.get(i).pos.top - 7, installedApps.get(i).x - 1 - installedApps.get(i).z + installedApps.get(i).pos.right + 14, installedApps.get(i).pos.top + installedApps.get(i).pos.bottom + 14);
                         canvas.drawBitmap(installedApps.get(i).icon, null,freeAllocate , paint);
                         paint.setTextAlign(Paint.Align.CENTER);
                         paint.setColor(Color.WHITE);
