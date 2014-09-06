@@ -25,11 +25,13 @@ import android.os.Vibrator;
 import android.preference.PreferenceManager;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
+import android.view.Display;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 import android.speech.SpeechRecognizer;
+import android.view.WindowManager;
 
 import com.google.vrtoolkit.cardboard.CardboardActivity;
 import com.google.vrtoolkit.cardboard.CardboardDeviceParams;
@@ -150,6 +152,7 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
         mSensorManager.registerListener(mSensorListener, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
         headTracker = new HeadTracker(getApplicationContext());
         headTracker.startTracking();
+
 
         MagnetSensor magnetSensor = new MagnetSensor(getApplicationContext());
         MagnetSensor.OnCardboardTriggerListener magnetTriggerListener = new MagnetSensor.OnCardboardTriggerListener() {
@@ -463,7 +466,8 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
             }
         }
 
-        float headFloats[] = new float[16];
+        float headMatrix[] = new float[16];
+        float headFloats[] = new float[3];
 
         private void move () {
             for (int i = 0; i < installedApps.size(); i++) {
@@ -472,11 +476,14 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
                     installedApps.get(i).x = (int) (installedApps.get(i).pos.left + (accelData * 100)) - iconCenter;
                 }
                 else {
-                    headTracker.getLastHeadView(headFloats, 0);
-                    float rotation = getRotFromMat(headFloats)[0];
-                    rotation = normalizeRotation(rotation);
+                    headTracker.getLastHeadView(headMatrix, 0);
+                    headFloats = getEulerFromMat(headMatrix);
 
-                    installedApps.get(i).x = (int) (installedApps.get(i).pos.left + (rotation * 500)) - iconCenter;
+//                    for(int j = 0; j < headFloats.length; j++)
+//                        System.out.print(headFloats[j] + ", ");
+//                    System.out.println("");
+
+                    installedApps.get(i).x = (int) (installedApps.get(i).pos.left + (headFloats[0] * 500)) - iconCenter;
 //                    System.out.print("\n ___ \r0 ");
 //                    for (int o = 0; o < headFloats.length; o++) {
 //                        System.out.print(headFloats[o] + "\t");
@@ -502,7 +509,7 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
             return normalizeRotation(rot);
         }
 
-        float[] getRotFromMat(float[] rotMatrix) {
+        float[] getEulerFromMat(float[] rotMatrix) {
             float x, y, z;
 
             float _11, _12, _13, _14;
@@ -553,98 +560,213 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
             return _return;
         }
 
+        float[] getMatFromEuler(float[] eulerAngles) {
+            float x = eulerAngles[0], y = eulerAngles[1], z = eulerAngles[2];
+
+            float _11 = 0, _12 = 0, _13 = 0, _14 = 0;
+            float _21 = 0, _22 = 0, _23 = 0, _24 = 0;
+            float _31 = 0, _32 = 0, _33 = 0, _34 = 0;
+            float _41 = 0, _42 = 0, _43 = 0, _44 = 0;
+
+            float transMatrix[] = new float[16];
+
+            float X[][] = new float[3][3];
+            float Y[][] = new float[3][3];
+            float Z[][] = new float[3][3];
+
+            X[2][2] = (float) Math.cos(x);
+            X[2][3] = (float) -Math.sin(x);
+            X[3][2] = (float) Math.sin(x);
+            X[3][3] = (float) Math.cos(x);
+
+            Y[1][1] = (float) Math.cos(y);
+            Y[1][3] = (float) Math.sin(y);
+            Y[3][1] = (float) -Math.sin(y);
+            Y[3][3] = (float) Math.cos(y);
+
+            Z[1][1] = (float) Math.cos(z);
+            Z[1][2] = (float) -Math.sin(z);
+            Z[2][1] = (float) Math.sin(z);
+            Z[2][2] = (float) Math.cos(z);
+
+            float[][] _rotMatrix = matrixMultiply(matrixMultiply(Z, Y), X);
+//            int k = 0;
+//            for (int i = 0; i < _rotMatrix.length; i++) {
+//                for (int j = 0; j < _rotMatrix[i].length; j++) {
+//                    transMatrix[k] = _rotMatrix[i][j];
+//                    k++;
+//                }
+//                transMatrix[k] = 0;
+//                k++;
+//            }
+//            transMatrix[12] = 0;
+//            transMatrix[13] = 0;
+//            transMatrix[14] = 0;
+//            transMatrix[15] = 1;
+
+            transMatrix[0] = _rotMatrix[0][0];
+            transMatrix[1] = _rotMatrix[0][1];
+            transMatrix[2] = _rotMatrix[0][2];
+            transMatrix[3] = 0;
+
+            transMatrix[4] = _rotMatrix[1][0];
+            transMatrix[5] = _rotMatrix[1][1];
+            transMatrix[6] = _rotMatrix[1][2];
+            transMatrix[7] = 0;
+
+            transMatrix[8] = _rotMatrix[2][0];
+            transMatrix[9] = _rotMatrix[2][1];
+            transMatrix[10] = _rotMatrix[2][2];
+            transMatrix[11] = 0;
+
+            transMatrix[12] = 0;
+            transMatrix[13] = 0;
+            transMatrix[14] = 0;
+            transMatrix[15] = 1;
+
+            return transMatrix;
+        }
+
+        public float[][] matrixMultiply(float[][] A, float[][] B) {
+
+            int aRows = A.length;
+            int aColumns = A[0].length;
+            int bRows = B.length;
+            int bColumns = B[0].length;
+
+            if (aColumns != bRows) {
+                throw new IllegalArgumentException("A:Rows: " + aColumns + " did not match B:Columns " + bRows + ".");
+            }
+
+            float[][] C = new float[aRows][bColumns];
+            for (int i = 0; i < 2; i++) {
+                for (int j = 0; j < 2; j++) {
+                    C[i][j] = 0.00000f;
+                }
+            }
+
+            for (int i = 0; i < aRows; i++) { // aRow
+                for (int j = 0; j < bColumns; j++) { // bColumn
+                    for (int k = 0; k < aColumns; k++) { // aColumn
+                        C[i][j] += A[i][k] * B[k][j];
+                    }
+                }
+            }
+
+            return C;
+        }
+
+        Display dis = ((WindowManager) getApplicationContext().getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay();
+        Bitmap lEyeBit = Bitmap.createBitmap(dis.getWidth() / 2, dis.getHeight(), Bitmap.Config.ARGB_8888);
+        Bitmap rEyeBit = Bitmap.createBitmap(dis.getWidth() / 2, dis.getHeight(), Bitmap.Config.ARGB_8888);
+        Canvas lEye = new Canvas(lEyeBit);
+        Canvas rEye = new Canvas(rEyeBit);
+
         @Override
         protected void onDraw(Canvas canvas) {
-
             super.onDraw(canvas);
             int radius;
             radius = 100;
 
+            paint.setColor(Color.BLACK);
+            canvas.drawPaint(paint);
 
+            // draw left eye
             if (premium && drawWallpaper) {
                 freeAllocate.set(0, 0, width, height);
-                canvas.drawBitmap(wallpaper, null, freeAllocate, paint);
+                lEye.drawBitmap(wallpaper, null, freeAllocate, paint);
             }
             else {
                 paint.setColor(Color.BLACK);
-                canvas.drawPaint(paint);
+                lEye.drawPaint(paint);
             }
 
             paint.setAntiAlias(true);
 
-            // draw left eye
             paint.setColor(Color.parseColor("#CD5C5C"));
             if (preferences.getBoolean("launch_on_hover", true))
-                canvas.drawCircle(width / 2, height / 2, radius * ((float) timeSelected / selectionTime), paint);
+                lEye.drawCircle(width / 2, height / 2, radius * ((float) timeSelected / selectionTime), paint);
             paint.setStyle(Paint.Style.STROKE);
             paint.setStrokeWidth(3);
-            canvas.drawCircle(width / 2, height / 2, radius, paint);
+            lEye.drawCircle(width / 2, height / 2, radius, paint);
             paint.setStyle(Paint.Style.FILL);
             if (startingApp) {
-                canvas.drawCircle(width / 2, height / 2, appStartAnimationPosition, paint);
+                lEye.drawCircle(width / 2, height / 2, appStartAnimationPosition, paint);
             }
             paint.setStyle(Paint.Style.FILL);
             for (int i = 0; i < installedApps.size(); i++) {
                 if (installedApps.get(i).x < width && installedApps.get(i).x + installedApps.get(i).pos.right > 0) {
                     if (i != selectedApp) {
                         freeAllocate.set(installedApps.get(i).x - 1, installedApps.get(i).pos.top, installedApps.get(i).x - 1 + installedApps.get(i).pos.right, installedApps.get(i).pos.top + installedApps.get(i).pos.bottom);
-                        canvas.drawBitmap(installedApps.get(i).icon, null, freeAllocate, paint);
-                    }
-                    else {
-                        freeAllocate.set(installedApps.get(i).x - 1 - installedApps.get(i).z - 7 - 4, installedApps.get(i).pos.top - 7, installedApps.get(i).x - 1 - installedApps.get(i).z + installedApps.get(i).pos.right + 14, installedApps.get(i).pos.top + installedApps.get(i).pos.bottom + 14);
-                        canvas.drawBitmap(installedApps.get(i).icon, null,freeAllocate , paint);
-                        paint.setTextAlign(Paint.Align.CENTER);
-                        paint.setColor(Color.WHITE);
-                        paint.setTextSize(20);
-                        canvas.drawText(installedApps.get(i).name, installedApps.get(i).x + (installedApps.get(i).pos.right / 2), installedApps.get(i).pos.top + 120, paint);
+                        lEye.drawBitmap(installedApps.get(i).iconGry, null, freeAllocate, paint);
                     }
                 }
+            }
+            if (selectedApp != -1) {
+                freeAllocate.set(installedApps.get(selectedApp).x + 1 + installedApps.get(selectedApp).z - 14, installedApps.get(selectedApp).pos.top - 14, installedApps.get(selectedApp).x + 1 + installedApps.get(selectedApp).z + installedApps.get(selectedApp).pos.right + 28, installedApps.get(selectedApp).pos.top + installedApps.get(selectedApp).pos.bottom + 28);
+                lEye.drawBitmap(installedApps.get(selectedApp).icon, null, freeAllocate, paint);
+                paint.setTextAlign(Paint.Align.CENTER);
+                paint.setColor(Color.WHITE);
+                paint.setTextSize(20);
+                lEye.drawText(installedApps.get(selectedApp).name, installedApps.get(selectedApp).x + (installedApps.get(selectedApp).pos.right / 2), installedApps.get(selectedApp).pos.top + 120, paint);
             }
 
 
 
             // draw right eye
             if (premium && drawWallpaper) {
-                freeAllocate.set(width, 0, width * 2, height);
-                canvas.drawBitmap(wallpaper, null, freeAllocate, paint);
+                freeAllocate.set(0, 0, width, height);
+                rEye.drawBitmap(wallpaper, null, freeAllocate, paint);
             }
             else {
                 paint.setColor(Color.BLACK);
-                canvas.drawRect(width, 0, width * 2, height, paint);
+                rEye.drawPaint(paint);
             }
             paint.setColor(Color.parseColor("#CD5C5C"));
             if (preferences.getBoolean("launch_on_hover", true))
-                canvas.drawCircle(width + width / 2, height / 2, radius * ((float) timeSelected / selectionTime), paint);
+                rEye.drawCircle(width / 2, height / 2, radius * ((float) timeSelected / selectionTime), paint);
             paint.setStyle(Paint.Style.STROKE);
             paint.setStrokeWidth(3);
-            canvas.drawCircle(width + width / 2, height / 2, radius, paint);
+            rEye.drawCircle(width / 2, height / 2, radius, paint);
             paint.setStyle(Paint.Style.FILL);
             if (startingApp) {
-                canvas.drawCircle(width + width / 2, height / 2, appStartAnimationPosition, paint);
+                rEye.drawCircle(width / 2, height / 2, appStartAnimationPosition, paint);
             }
             paint.setStyle(Paint.Style.FILL);
             for (int i = 0; i < installedApps.size(); i++) {
-                if (installedApps.get(i).x + width > width && installedApps.get(i).x + width < width * 2) {
+                if (installedApps.get(i).x < width && installedApps.get(i).x + installedApps.get(i).pos.right > 0) {
                     if (i != selectedApp) {
-                        freeAllocate.set(installedApps.get(i).x + width + 1, installedApps.get(i).pos.top, installedApps.get(i).x + width + installedApps.get(i).z + installedApps.get(i).pos.right, installedApps.get(i).pos.top + installedApps.get(i).pos.bottom);
-                        canvas.drawBitmap(installedApps.get(i).icon, null, freeAllocate, paint);
-                    }
-                    else {
-                        freeAllocate.set(installedApps.get(i).x + width + 1 + installedApps.get(i).z - 7, installedApps.get(i).pos.top - 7, installedApps.get(i).x + 1 + width + installedApps.get(i).z + installedApps.get(i).pos.right + 14, installedApps.get(i).pos.top + installedApps.get(i).pos.bottom + 14);
-                        canvas.drawBitmap(installedApps.get(i).icon, null, freeAllocate, paint);
-                        paint.setTextAlign(Paint.Align.CENTER);
-                        paint.setColor(Color.WHITE);
-                        paint.setTextSize(20);
-                        canvas.drawText(installedApps.get(i).name, installedApps.get(i).x + (installedApps.get(i).pos.right / 2) + width, installedApps.get(i).pos.top + 120, paint);
+                        freeAllocate.set(installedApps.get(i).x - 1, installedApps.get(i).pos.top, installedApps.get(i).x - 1 + installedApps.get(i).pos.right, installedApps.get(i).pos.top + installedApps.get(i).pos.bottom);
+                        rEye.drawBitmap(installedApps.get(i).iconGry, null, freeAllocate, paint);
                     }
                 }
             }
+            if (selectedApp != -1) {
+                freeAllocate.set(installedApps.get(selectedApp).x - 1 - installedApps.get(selectedApp).z - 14 - 4, installedApps.get(selectedApp).pos.top - 14, installedApps.get(selectedApp).x - 1 - installedApps.get(selectedApp).z + installedApps.get(selectedApp).pos.right + 28, installedApps.get(selectedApp).pos.top + installedApps.get(selectedApp).pos.bottom + 28);
+                rEye.drawBitmap(installedApps.get(selectedApp).icon, null, freeAllocate , paint);
+                paint.setTextAlign(Paint.Align.CENTER);
+                paint.setColor(Color.WHITE);
+                paint.setTextSize(20);
+                rEye.drawText(installedApps.get(selectedApp).name, installedApps.get(selectedApp).x + (installedApps.get(selectedApp).pos.right / 2), installedApps.get(selectedApp).pos.top + 120, paint);
+            }
 
 
+            //render eyes to screen
+            float pupilaryDist = ((100 - preferences.getInt("interpupilary_distance", 50)) / 50) * 0.0635f; // this should be the distance between the user's pupils in meters -- 0.0635m is average
+            int shiftImage = (int) (pupilaryDist * 1023.6220472); // for the OPO, this needs to equal 65
+//            print("An interpupilary distance of " + pupilaryDist + " is equal to " + shiftImage * 2 + " pixels.");
+            canvas.drawBitmap(lEyeBit, new Rect(0,0,width,height), new Rect(shiftImage,0,width + shiftImage, height), paint);
+            canvas.drawBitmap(rEyeBit, new Rect(shiftImage,0,width,height), new Rect(width,0,getWidth() - shiftImage, height), paint);
 
             //draw divider
             paint.setColor(Color.GRAY);
-            canvas.drawRect(width - 1, 0, width + 1, height, paint);
+            canvas.drawRect(width - 5, 0, width + 5, height, paint);
+
+            if (appStartAnimationPosition > 0) {
+                paint.setColor(Color.BLACK);
+                paint.setAlpha((int) ((appStartAnimationPosition / (height / 2f)) * 255f));
+                canvas.drawPaint(paint);
+            }
 
             gameLoop();
         }

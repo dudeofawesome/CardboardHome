@@ -16,6 +16,9 @@
     <string name="pref_description_package_names">A list of apps separated by commas, that the launcher will display</string>
     <string name="pref_default_package_names">Super Hexagon, ViewR, Other App Name</string>
 
+    <string name="pref_title_interpupilary_distance">Interpupilary Distance</string>
+    <string name="pref_description_interpupilary_distance">The distance, between your pupils. 0 meaning your pupils are very close, 100 meaning they are far apart.</string>
+
     <!--<string name="pref_title_display_name">Display name</string>-->
     <!--<string name="pref_default_display_name">John Smith</string>-->
 
