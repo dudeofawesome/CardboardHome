@@ -53,8 +53,12 @@ public class ApplicationItem {
                 this.launchIntent = pkgMan.getLaunchIntentForPackage(currentHomePackage);
             }
         }
-        else {
+        else if (type == 1) {
             this.name = "Preferences";
+            this.launchIntent = new Intent(context, SettingsActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        }
+        else if (type == 2) {
+            this.name = "Adjust Volume";
             this.launchIntent = new Intent(context, SettingsActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         }
         this.context = context;

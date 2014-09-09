@@ -26,6 +26,7 @@ import android.preference.PreferenceManager;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 import android.view.Display;
+import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
@@ -39,6 +40,7 @@ import com.google.vrtoolkit.cardboard.sensors.HeadTracker;
 import com.google.vrtoolkit.cardboard.sensors.MagnetSensor;
 import com.google.vrtoolkit.cardboard.sensors.NfcSensor;
 
+import java.security.Key;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -49,6 +51,7 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
     private MyView gameView = null;
     public static ArrayList<ApplicationItem> installedApps = new ArrayList<ApplicationItem>();
     public int iconCenter = 0;
+    public float rotationalOffset = 0;
     public static float accelData = 0f;
     public static float rawAccelData = 0f;
     public static float rawGyroData = 0f;
@@ -119,6 +122,7 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
                 }
             }
         }
+        installedApps.add(new ApplicationItem(new Rect((installedApps.size() - 1) * APP_SPACING, 315, 92, 92), BitmapFactory.decodeResource(getResources(), R.drawable.volume_icon), 2, getPackageManager(), getBaseContext()));
         installedApps.add(new ApplicationItem(new Rect((installedApps.size() - 1) * APP_SPACING, 315, 92, 92), BitmapFactory.decodeResource(getResources(), R.drawable.settings_icon), 1, getPackageManager(), getBaseContext()));
         installedApps.add(new ApplicationItem(new Rect((installedApps.size() - 1) * APP_SPACING, 315, 92, 92), BitmapFactory.decodeResource(getResources(), R.drawable.exit_icon), 0, getPackageManager(), getBaseContext()));
 
@@ -295,10 +299,19 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
     }
 
     private void launchApp () {
-        AudioManager mgr = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
-        mgr.setStreamVolume(AudioManager.STREAM_MUSIC, originalVolume, AudioManager.FLAG_REMOVE_SOUND_AND_VIBRATE);
         startingApp = false;
-        appToLaunch.launch();
+        if (appToLaunch.name.equals("Adjust Volume")) {
+            // Bring up volume adjustment panel
+
+            // Ready to launch other app
+            gameView.appStartAnimationPosition = 0;
+        }
+        else {
+            AudioManager mgr = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
+            mgr.setStreamVolume(AudioManager.STREAM_MUSIC, originalVolume, AudioManager.FLAG_REMOVE_SOUND_AND_VIBRATE);
+
+            appToLaunch.launch();
+        }
     }
 
     private void makeImmersive() {
@@ -336,6 +349,16 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
             }
         }
         return false;
+    }
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_BACK)
+            return true;
+        else if ((keyCode == KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == KeyEvent.KEYCODE_VOLUME_UP) && preferences.getBoolean("disable_volume_buttons", false))
+            return true;
+        else
+            return super.onKeyDown(keyCode, event);
     }
 
     @Override
@@ -457,12 +480,11 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
             if (selectedApp != -1) {
                 if (preferences.getBoolean("vibrate_on_selection", true))
                     mVibrator.vibrate(50);
-//                installedApps.get(selectedApp).launch();
                 prepareToLaunch(installedApps.get(selectedApp));
             }
-            else if (readyToListen /*&& !listening*/ && preferences.getBoolean("listen_for_voice", true)) {
-                listening = true;
-                speechRecog.startListening(recognizerIntent);
+            else {
+                // reset rotation
+                rotationalOffset = headFloats[0];
             }
         }
 
@@ -483,7 +505,7 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
 //                        System.out.print(headFloats[j] + ", ");
 //                    System.out.println("");
 
-                    installedApps.get(i).x = (int) (installedApps.get(i).pos.left + (headFloats[0] * 500)) - iconCenter;
+                    installedApps.get(i).x = (int) (installedApps.get(i).pos.left + ((headFloats[0] - rotationalOffset) * 500)) - iconCenter;
 //                    System.out.print("\n ___ \r0 ");
 //                    for (int o = 0; o < headFloats.length; o++) {
 //                        System.out.print(headFloats[o] + "\t");

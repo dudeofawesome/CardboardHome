@@ -36,6 +36,12 @@
         android:defaultValue="true" />
 
     <CheckBoxPreference
+        android:key="disable_volume_buttons"
+        android:title="@string/pref_title_disable_volume_buttons"
+        android:summary="@string/pref_description_disable_volume_buttons"
+        android:defaultValue="false" />
+
+    <CheckBoxPreference
         android:key="premium"
         android:title="@string/pref_title_premium"
         android:defaultValue="false"
