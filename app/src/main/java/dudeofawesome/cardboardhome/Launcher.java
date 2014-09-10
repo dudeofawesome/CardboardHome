@@ -14,6 +14,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
+import android.graphics.RectF;
 import android.graphics.drawable.BitmapDrawable;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -74,6 +75,9 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
     private boolean readyToListen = false;
     private boolean listening = false;
     private int originalVolume = 0;
+    public boolean volumePanelExpanded = false;
+    public int volumePanelPosition = 0;
+    public int volumePanelKnobPosition = 0;
 
     private final int APP_SPACING = 115;
     private final float TWEEN_TIMING = 0.5f * 60;
@@ -111,7 +115,15 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
         // get installed apps
         for (int i = 0; i < packages.size(); i++) {
             if ((packages.get(i).packageName.toLowerCase().contains("cardboard") || packages.get(i).packageName.toLowerCase().contains("dive") || packages.get(i).packageName.toLowerCase().contains("vr") || packages.get(i).packageName.toLowerCase().contains("virtual") || packages.get(i).packageName.toLowerCase().contains("reality") || packages.get(i).packageName.equals("com.dudeofawesome.SuperHexagon")) && !packages.get(i).packageName.equals("com.dudeofawesome.cardboardhome") && !packages.get(i).packageName.equals("com.dudeofawesome.cardboardhomeunlocker")) {
-                installedApps.add(new ApplicationItem(new Rect((installedApps.size() - 1) * APP_SPACING, 315, 92, 92), packages.get(i), getPackageManager(), getBaseContext()));
+                String[] ignoreNames = preferences.getString("blacklist", "").split(", ");
+                boolean appOnBlacklist = false;
+                for (int j = 0; j < ignoreNames.length; j++) {
+                    if (getPackageManager().getApplicationLabel(packages.get(i)).toString().toLowerCase().equals(ignoreNames[j].toLowerCase())) {
+                        appOnBlacklist = true;
+                    }
+                }
+                if (!appOnBlacklist)
+                    installedApps.add(new ApplicationItem(new Rect((installedApps.size() - 1) * APP_SPACING, 315, 92, 92), packages.get(i), getPackageManager(), getBaseContext()));
             }
             else {
                 String[] packageNames = preferences.getString("package_names_to_add", "").split(", ");
@@ -302,13 +314,23 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
         startingApp = false;
         if (appToLaunch.name.equals("Adjust Volume")) {
             // Bring up volume adjustment panel
+//            if (originalVolume == 0) {
+//                AudioManager audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+//                originalVolume = audioManager.getStreamMaxVolume(audioManager.STREAM_MUSIC);
+//            }
+//            else
+//                originalVolume = 0;
+            volumePanelExpanded = true;
+            volumePanelPosition = (int) ((gameView.headFloats[0] - rotationalOffset) * 500);
+            AudioManager audioManager = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
+            volumePanelKnobPosition = (originalVolume / audioManager.getStreamMaxVolume(audioManager.STREAM_MUSIC)) * 100;
 
             // Ready to launch other app
             gameView.appStartAnimationPosition = 0;
         }
         else {
-            AudioManager mgr = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
-            mgr.setStreamVolume(AudioManager.STREAM_MUSIC, originalVolume, AudioManager.FLAG_REMOVE_SOUND_AND_VIBRATE);
+            AudioManager audioManager = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
+            audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, originalVolume, AudioManager.FLAG_REMOVE_SOUND_AND_VIBRATE);
 
             appToLaunch.launch();
         }
@@ -477,7 +499,14 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
         }
 
         public void magnetPull () {
-            if (selectedApp != -1) {
+            if (volumePanelExpanded) {
+                // set volume
+                volumePanelExpanded = false;
+                AudioManager audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+                originalVolume = (audioManager.getStreamMaxVolume(audioManager.STREAM_MUSIC) * (volumePanelKnobPosition / volumePanelPosition));
+                System.out.println("Volume set to " + originalVolume + "/" + audioManager.getStreamMaxVolume(audioManager.STREAM_MUSIC));
+            }
+            else if (selectedApp != -1) {
                 if (preferences.getBoolean("vibrate_on_selection", true))
                     mVibrator.vibrate(50);
                 prepareToLaunch(installedApps.get(selectedApp));
@@ -492,6 +521,13 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
         float headFloats[] = new float[3];
 
         private void move () {
+            if (volumePanelExpanded) {
+//                volumePanelKnobPosition = (int) (((headFloats[0] - rotationalOffset) * 500) / volumePanelPosition) * 100;
+                volumePanelKnobPosition = (int) ((gameView.headFloats[0] - rotationalOffset) * 500);
+                volumePanelKnobPosition = (volumePanelKnobPosition > volumePanelPosition) ? volumePanelKnobPosition : volumePanelPosition;
+                volumePanelKnobPosition = (volumePanelKnobPosition < volumePanelPosition - width) ? volumePanelKnobPosition : volumePanelPosition - width;
+                System.out.println(volumePanelKnobPosition + " of " + volumePanelPosition);
+            }
             for (int i = 0; i < installedApps.size(); i++) {
                 installedApps.get(i).pos.top = (height / 2) - (installedApps.get(i).pos.bottom / 2);
                 if (rawGyroData == 0.0000f || forceAccelerometer) {
@@ -501,21 +537,7 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
                     headTracker.getLastHeadView(headMatrix, 0);
                     headFloats = getEulerFromMat(headMatrix);
 
-//                    for(int j = 0; j < headFloats.length; j++)
-//                        System.out.print(headFloats[j] + ", ");
-//                    System.out.println("");
-
                     installedApps.get(i).x = (int) (installedApps.get(i).pos.left + ((headFloats[0] - rotationalOffset) * 500)) - iconCenter;
-//                    System.out.print("\n ___ \r0 ");
-//                    for (int o = 0; o < headFloats.length; o++) {
-//                        System.out.print(headFloats[o] + "\t");
-//                        switch(o) {
-//                            case 3 : case 7 : case 11 :
-//                                System.out.print("\r" + ((int) ((o+1) / 4)) + " ");
-//                                break;
-//                        }
-//                    }
-//                    System.out.println(getRotFromMat(headFloats)[0]);
                 }
             }
         }
@@ -715,16 +737,37 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
             if (startingApp) {
                 lEye.drawCircle(width / 2, height / 2, appStartAnimationPosition, paint);
             }
-            paint.setStyle(Paint.Style.FILL);
             for (int i = 0; i < installedApps.size(); i++) {
                 if (installedApps.get(i).x < width && installedApps.get(i).x + installedApps.get(i).pos.right > 0) {
-                    if (i != selectedApp) {
+                    if (i != selectedApp || volumePanelExpanded) {
                         freeAllocate.set(installedApps.get(i).x - 1, installedApps.get(i).pos.top, installedApps.get(i).x - 1 + installedApps.get(i).pos.right, installedApps.get(i).pos.top + installedApps.get(i).pos.bottom);
                         lEye.drawBitmap(installedApps.get(i).iconGry, null, freeAllocate, paint);
                     }
                 }
             }
-            if (selectedApp != -1) {
+            if (volumePanelExpanded) {
+                paint.setColor(Color.argb(200, 100, 100, 100));
+                if (100 - (int) ((headFloats[0] - rotationalOffset) * 500) > width / 2 - 25)
+                    freeAllocate.set(width / 2 - width - 200 - 25, height / 2 - 25, width / 2, height / 2 + 25);
+                else if (width - 100 + (int) ((headFloats[0] - rotationalOffset) * 500) < width / 2 + 25)
+                    freeAllocate.set(width / 2, height / 2 - 25, width - 120 + 25, height / 2 + 25);
+                else
+                    freeAllocate.set(100 + (int) ((headFloats[0] - rotationalOffset) * 500), height / 2 - 25, width - 100 + (int) ((headFloats[0] - rotationalOffset) * 500), height / 2 + 25);
+                lEye.drawRoundRect(new RectF(freeAllocate), 50f, 50f, paint);
+
+                paint.setColor(Color.rgb(0, 100, 255));
+                if (120 + (int) ((headFloats[0] - rotationalOffset) * 500) > width / 2 - 5)
+                    freeAllocate.set(width / 2 - 5, height / 2 - 5, width, height / 2 + 5);
+                else if (width - 120 + (int) ((headFloats[0] - rotationalOffset) * 500) < width / 2 + 5)
+                    freeAllocate.set(width / 2 - width - 240, height / 2 - 5, width / 2 + 5, height / 2 + 5);
+                else
+                    freeAllocate.set(120 + (int) ((headFloats[0] - rotationalOffset) * 500), height / 2 - 5, width - 120 + (int) ((headFloats[0] - rotationalOffset) * 500), height / 2 + 5);
+                lEye.drawRect(freeAllocate, paint);
+
+                paint.setColor(Color.rgb(0, 50, 255));
+                lEye.drawCircle(width / 2, height / 2, 14, paint);
+            }
+            if (!volumePanelExpanded && selectedApp != -1) {
                 freeAllocate.set(installedApps.get(selectedApp).x + 1 + installedApps.get(selectedApp).z - 14, installedApps.get(selectedApp).pos.top - 14, installedApps.get(selectedApp).x + 1 + installedApps.get(selectedApp).z + installedApps.get(selectedApp).pos.right + 28, installedApps.get(selectedApp).pos.top + installedApps.get(selectedApp).pos.bottom + 28);
                 lEye.drawBitmap(installedApps.get(selectedApp).icon, null, freeAllocate, paint);
                 paint.setTextAlign(Paint.Align.CENTER);
@@ -754,16 +797,37 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
             if (startingApp) {
                 rEye.drawCircle(width / 2, height / 2, appStartAnimationPosition, paint);
             }
-            paint.setStyle(Paint.Style.FILL);
             for (int i = 0; i < installedApps.size(); i++) {
                 if (installedApps.get(i).x < width && installedApps.get(i).x + installedApps.get(i).pos.right > 0) {
-                    if (i != selectedApp) {
+                    if (i != selectedApp || volumePanelExpanded) {
                         freeAllocate.set(installedApps.get(i).x - 1, installedApps.get(i).pos.top, installedApps.get(i).x - 1 + installedApps.get(i).pos.right, installedApps.get(i).pos.top + installedApps.get(i).pos.bottom);
                         rEye.drawBitmap(installedApps.get(i).iconGry, null, freeAllocate, paint);
                     }
                 }
             }
-            if (selectedApp != -1) {
+            if (volumePanelExpanded) {
+                paint.setColor(Color.argb(200, 100, 100, 100));
+                if (100 - (int) ((headFloats[0] - rotationalOffset) * 500) > width / 2 - 25)
+                    freeAllocate.set(width / 2 - width - 200 - 25, height / 2 - 25, width / 2, height / 2 + 25);
+                else if (width - 100 + (int) ((headFloats[0] - rotationalOffset) * 500) < width / 2 + 25)
+                    freeAllocate.set(width / 2, height / 2 - 25, width - 120 + 25, height / 2 + 25);
+                else
+                    freeAllocate.set(100 + (int) ((headFloats[0] - rotationalOffset) * 500), height / 2 - 25, width - 100 + (int) ((headFloats[0] - rotationalOffset) * 500), height / 2 + 25);
+                rEye.drawRoundRect(new RectF(freeAllocate), 50f, 50f, paint);
+
+                paint.setColor(Color.rgb(0, 100, 255));
+                if (120 + (int) ((headFloats[0] - rotationalOffset) * 500) > width / 2 - 5)
+                    freeAllocate.set(width / 2 - 5, height / 2 - 5, width, height / 2 + 5);
+                else if (width - 120 + (int) ((headFloats[0] - rotationalOffset) * 500) < width / 2 + 5)
+                    freeAllocate.set(width / 2 - width - 240, height / 2 - 5, width / 2 + 25, height / 2 + 5);
+                else
+                    freeAllocate.set(120 + (int) ((headFloats[0] - rotationalOffset) * 500), height / 2 - 5, width - 120 + (int) ((headFloats[0] - rotationalOffset) * 500), height / 2 + 5);
+                rEye.drawRect(freeAllocate, paint);
+
+                paint.setColor(Color.rgb(0, 50, 255));
+                rEye.drawCircle(width / 2, height / 2, 14, paint);
+            }
+            if (!volumePanelExpanded && selectedApp != -1) {
                 freeAllocate.set(installedApps.get(selectedApp).x - 1 - installedApps.get(selectedApp).z - 14 - 4, installedApps.get(selectedApp).pos.top - 14, installedApps.get(selectedApp).x - 1 - installedApps.get(selectedApp).z + installedApps.get(selectedApp).pos.right + 28, installedApps.get(selectedApp).pos.top + installedApps.get(selectedApp).pos.bottom + 28);
                 rEye.drawBitmap(installedApps.get(selectedApp).icon, null, freeAllocate , paint);
                 paint.setTextAlign(Paint.Align.CENTER);

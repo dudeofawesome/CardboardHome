@@ -17,7 +17,17 @@
         android:title="@string/pref_title_package_names"
         android:summary="@string/pref_description_package_names"
         android:defaultValue="@string/pref_default_package_names"
-        android:selectAllOnFocus="true"
+        android:selectAllOnFocus="false"
+        android:inputType="textNoSuggestions"
+        android:singleLine="true"
+        android:maxLines="1" />
+
+    <EditTextPreference
+        android:key="blacklist"
+        android:title="@string/pref_title_blacklist"
+        android:summary="@string/pref_description_blacklist"
+        android:defaultValue="@string/pref_default_blacklist"
+        android:selectAllOnFocus="false"
         android:inputType="textNoSuggestions"
         android:singleLine="true"
         android:maxLines="1" />
