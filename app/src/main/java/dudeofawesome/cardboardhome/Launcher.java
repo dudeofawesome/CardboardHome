@@ -503,8 +503,8 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
                 // set volume
                 volumePanelExpanded = false;
                 AudioManager audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
-                originalVolume = (audioManager.getStreamMaxVolume(audioManager.STREAM_MUSIC) * (volumePanelKnobPosition / volumePanelPosition));
-                System.out.println("Volume set to " + originalVolume + "/" + audioManager.getStreamMaxVolume(audioManager.STREAM_MUSIC));
+                originalVolume = (audioManager.getStreamMaxVolume(audioManager.STREAM_MUSIC) * (Math.abs((volumePanelKnobPosition - volumePanelPosition) - (width - 240)) / (width - 240)));
+                System.out.println("Volume set to " + originalVolume + "/" + audioManager.getStreamMaxVolume(audioManager.STREAM_MUSIC) + " == (" + volumePanelKnobPosition + " - " + volumePanelPosition + ") / " + (width - 240));
             }
             else if (selectedApp != -1) {
                 if (preferences.getBoolean("vibrate_on_selection", true))
@@ -524,9 +524,9 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
             if (volumePanelExpanded) {
 //                volumePanelKnobPosition = (int) (((headFloats[0] - rotationalOffset) * 500) / volumePanelPosition) * 100;
                 volumePanelKnobPosition = (int) ((gameView.headFloats[0] - rotationalOffset) * 500);
-                volumePanelKnobPosition = (volumePanelKnobPosition > volumePanelPosition) ? volumePanelKnobPosition : volumePanelPosition;
-                volumePanelKnobPosition = (volumePanelKnobPosition < volumePanelPosition - width) ? volumePanelKnobPosition : volumePanelPosition - width;
-                System.out.println(volumePanelKnobPosition + " of " + volumePanelPosition);
+                volumePanelKnobPosition = (volumePanelKnobPosition < volumePanelPosition) ? volumePanelPosition : volumePanelKnobPosition;
+                volumePanelKnobPosition = (volumePanelKnobPosition > volumePanelPosition + width) ? volumePanelPosition + width : volumePanelKnobPosition;
+                System.out.println(volumePanelKnobPosition + " of " + volumePanelPosition + " with width of " + width);
             }
             for (int i = 0; i < installedApps.size(); i++) {
                 installedApps.get(i).pos.top = (height / 2) - (installedApps.get(i).pos.bottom / 2);
