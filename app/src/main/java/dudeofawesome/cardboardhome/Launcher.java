@@ -78,6 +78,7 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
     public boolean volumePanelExpanded = false;
     public int volumePanelPosition = 0;
     public int volumePanelKnobPosition = 0;
+    public int volumePanelWidth = 1;
 
     private final int APP_SPACING = 115;
     private final float TWEEN_TIMING = 0.5f * 60;
@@ -436,6 +437,7 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
 
             paint.setStyle(Paint.Style.FILL);
             width = getWidth() / 2;
+            volumePanelWidth = width - 480;
             height = getHeight();
             timeOfLastFrame = System.currentTimeMillis();
 
@@ -451,6 +453,7 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
             updateTweens();
             if (width == 0) {
                 width = getWidth() / 2;
+                volumePanelWidth = width - 480;
                 height = getHeight();
                 cursorPosition = new Rect(width / 2 - 1, 0, width / 2 + 1, height);
             }
@@ -503,8 +506,7 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
                 // set volume
                 volumePanelExpanded = false;
                 AudioManager audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
-                originalVolume = (audioManager.getStreamMaxVolume(audioManager.STREAM_MUSIC) * (Math.abs((volumePanelKnobPosition - volumePanelPosition) - (width - 240)) / (width - 240)));
-                System.out.println("Volume set to " + originalVolume + "/" + audioManager.getStreamMaxVolume(audioManager.STREAM_MUSIC) + " == (" + volumePanelKnobPosition + " - " + volumePanelPosition + ") / " + (width - 240));
+                originalVolume = (int) (audioManager.getStreamMaxVolume(audioManager.STREAM_MUSIC) * (Math.abs(volumePanelKnobPosition - volumePanelWidth) / (float) volumePanelWidth));
             }
             else if (selectedApp != -1) {
                 if (preferences.getBoolean("vibrate_on_selection", true))
@@ -523,10 +525,9 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
         private void move () {
             if (volumePanelExpanded) {
 //                volumePanelKnobPosition = (int) (((headFloats[0] - rotationalOffset) * 500) / volumePanelPosition) * 100;
-                volumePanelKnobPosition = (int) ((gameView.headFloats[0] - rotationalOffset) * 500);
-                volumePanelKnobPosition = (volumePanelKnobPosition < volumePanelPosition) ? volumePanelPosition : volumePanelKnobPosition;
-                volumePanelKnobPosition = (volumePanelKnobPosition > volumePanelPosition + width) ? volumePanelPosition + width : volumePanelKnobPosition;
-                System.out.println(volumePanelKnobPosition + " of " + volumePanelPosition + " with width of " + width);
+                volumePanelKnobPosition = (int) ((gameView.headFloats[0] - rotationalOffset) * 500) - volumePanelPosition;
+                volumePanelKnobPosition = (volumePanelKnobPosition < 0) ? 0 : volumePanelKnobPosition;
+                volumePanelKnobPosition = (volumePanelKnobPosition > volumePanelWidth) ? volumePanelWidth : volumePanelKnobPosition;
             }
             for (int i = 0; i < installedApps.size(); i++) {
                 installedApps.get(i).pos.top = (height / 2) - (installedApps.get(i).pos.bottom / 2);
@@ -537,6 +538,10 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
                     headTracker.getLastHeadView(headMatrix, 0);
                     headFloats = getEulerFromMat(headMatrix);
 
+//                    if ((int) (headFloats[0] * 100) / 100 <= Math.PI + (15 * Math.PI / 16) && (int) (headFloats[0] * 100) / 100 >= Math.PI - (15 * Math.PI / 16) && rotationalOffset >= Math.PI / 2 && rotationalOffset <= -Math.PI / 2) { // accounts for weird behavior at PI rads
+//                        installedApps.get(i).x = (int) (installedApps.get(i).pos.left + ((headFloats[0] - rotationalOffset) * 500)) - iconCenter;
+//                    }
+//                    else
                     installedApps.get(i).x = (int) (installedApps.get(i).pos.left + ((headFloats[0] - rotationalOffset) * 500)) - iconCenter;
                 }
             }
@@ -747,10 +752,10 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
             }
             if (volumePanelExpanded) {
                 paint.setColor(Color.argb(200, 100, 100, 100));
-                if (100 - (int) ((headFloats[0] - rotationalOffset) * 500) > width / 2 - 25)
-                    freeAllocate.set(width / 2 - width - 200 - 25, height / 2 - 25, width / 2, height / 2 + 25);
-                else if (width - 100 + (int) ((headFloats[0] - rotationalOffset) * 500) < width / 2 + 25)
-                    freeAllocate.set(width / 2, height / 2 - 25, width - 120 + 25, height / 2 + 25);
+                if (100 - (int) ((headFloats[0] - rotationalOffset) * 500) > width / 2 - 25) // overscroll to the right
+                    freeAllocate.set(width / 2 - width - 200 - 25, height / 2 - 25, width / 2 + 25, height / 2 + 25);
+                else if (100 + (int) ((headFloats[0] - rotationalOffset) * 500) > width / 2 - 25) // overscroll to the left
+                    freeAllocate.set(width / 2 - 25, height / 2 - 25, width, height / 2 + 25);
                 else
                     freeAllocate.set(100 + (int) ((headFloats[0] - rotationalOffset) * 500), height / 2 - 25, width - 100 + (int) ((headFloats[0] - rotationalOffset) * 500), height / 2 + 25);
                 lEye.drawRoundRect(new RectF(freeAllocate), 50f, 50f, paint);
@@ -759,7 +764,7 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
                 if (120 + (int) ((headFloats[0] - rotationalOffset) * 500) > width / 2 - 5)
                     freeAllocate.set(width / 2 - 5, height / 2 - 5, width, height / 2 + 5);
                 else if (width - 120 + (int) ((headFloats[0] - rotationalOffset) * 500) < width / 2 + 5)
-                    freeAllocate.set(width / 2 - width - 240, height / 2 - 5, width / 2 + 5, height / 2 + 5);
+                    freeAllocate.set(width / 2 - width - 240, height / 2 - 5, width / 2 - 5, height / 2 + 5);
                 else
                     freeAllocate.set(120 + (int) ((headFloats[0] - rotationalOffset) * 500), height / 2 - 5, width - 120 + (int) ((headFloats[0] - rotationalOffset) * 500), height / 2 + 5);
                 lEye.drawRect(freeAllocate, paint);
@@ -807,10 +812,10 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
             }
             if (volumePanelExpanded) {
                 paint.setColor(Color.argb(200, 100, 100, 100));
-                if (100 - (int) ((headFloats[0] - rotationalOffset) * 500) > width / 2 - 25)
-                    freeAllocate.set(width / 2 - width - 200 - 25, height / 2 - 25, width / 2, height / 2 + 25);
-                else if (width - 100 + (int) ((headFloats[0] - rotationalOffset) * 500) < width / 2 + 25)
-                    freeAllocate.set(width / 2, height / 2 - 25, width - 120 + 25, height / 2 + 25);
+                if (100 - (int) ((headFloats[0] - rotationalOffset) * 500) > width / 2 - 25) // overscroll to the right
+                    freeAllocate.set(width / 2 - width - 200 - 25, height / 2 - 25, width / 2 + 25, height / 2 + 25);
+                else if (100 + (int) ((headFloats[0] - rotationalOffset) * 500) > width / 2 - 25) // overscroll to the left
+                    freeAllocate.set(width / 2 - 25, height / 2 - 25, width, height / 2 + 25);
                 else
                     freeAllocate.set(100 + (int) ((headFloats[0] - rotationalOffset) * 500), height / 2 - 25, width - 100 + (int) ((headFloats[0] - rotationalOffset) * 500), height / 2 + 25);
                 rEye.drawRoundRect(new RectF(freeAllocate), 50f, 50f, paint);
@@ -819,7 +824,7 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
                 if (120 + (int) ((headFloats[0] - rotationalOffset) * 500) > width / 2 - 5)
                     freeAllocate.set(width / 2 - 5, height / 2 - 5, width, height / 2 + 5);
                 else if (width - 120 + (int) ((headFloats[0] - rotationalOffset) * 500) < width / 2 + 5)
-                    freeAllocate.set(width / 2 - width - 240, height / 2 - 5, width / 2 + 25, height / 2 + 5);
+                    freeAllocate.set(width / 2 - width - 240, height / 2 - 5, width / 2 - 5, height / 2 + 5);
                 else
                     freeAllocate.set(120 + (int) ((headFloats[0] - rotationalOffset) * 500), height / 2 - 5, width - 120 + (int) ((headFloats[0] - rotationalOffset) * 500), height / 2 + 5);
                 rEye.drawRect(freeAllocate, paint);
