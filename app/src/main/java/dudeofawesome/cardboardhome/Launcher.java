@@ -281,17 +281,18 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
             }
         };
 
-        recognizerIntent = RecognizerIntent.getVoiceDetailsIntent(getBaseContext());
-        recognizerIntent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 30000);
-        recognizerIntent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 30000);
-        recognizerIntent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 30000);
-        speechRecog = SpeechRecognizer.createSpeechRecognizer(getBaseContext());
-        speechRecog.setRecognitionListener(recognitionListener);
-        readyToListen = true;
-        listening = true;
-        if (preferences.getBoolean("listen_for_voice", true))
-            speechRecog.startListening(recognizerIntent);
+        if (preferences.getBoolean("listen_for_voice", true)) {
+            recognizerIntent = RecognizerIntent.getVoiceDetailsIntent(getBaseContext());
+            recognizerIntent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 30000);
+            recognizerIntent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 30000);
+            recognizerIntent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 30000);
+            speechRecog = SpeechRecognizer.createSpeechRecognizer(getBaseContext());
+            speechRecog.setRecognitionListener(recognitionListener);
+            readyToListen = true;
+            listening = true;
 
+            speechRecog.startListening(recognizerIntent);
+        }
         if (premium) {
             wallpaper = ((BitmapDrawable) WallpaperManager.getInstance(this).getDrawable()).getBitmap();
         }
@@ -531,7 +532,7 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
             }
             for (int i = 0; i < installedApps.size(); i++) {
                 installedApps.get(i).pos.top = (height / 2) - (installedApps.get(i).pos.bottom / 2);
-                if (rawGyroData == 0.0000f || forceAccelerometer) {
+                if (rawGyroData == 0.0000f || forceAccelerometer || headTracker == null ) {
                     installedApps.get(i).x = (int) (installedApps.get(i).pos.left + (accelData * 100)) - iconCenter;
                 }
                 else {
