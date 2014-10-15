@@ -199,89 +199,90 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
         if (preferences.getBoolean("listen_for_voice", true))
             mgr.setStreamVolume(AudioManager.STREAM_MUSIC, 0, AudioManager.FLAG_REMOVE_SOUND_AND_VIBRATE);
 
-        RecognitionListener recognitionListener = new RecognitionListener() {
-            @Override
-            public void onReadyForSpeech(Bundle bundle) {
+        if (premium && preferences.getBoolean("listen_for_voice", true)) {
+            RecognitionListener recognitionListener = new RecognitionListener() {
+                @Override
+                public void onReadyForSpeech(Bundle bundle) {
 
-            }
+                }
 
-            @Override
-            public void onBeginningOfSpeech() {
-                listening = true;
-            }
+                @Override
+                public void onBeginningOfSpeech() {
+                    listening = true;
+                }
 
-            @Override
-            public void onRmsChanged(float v) {
+                @Override
+                public void onRmsChanged(float v) {
 
-            }
+                }
 
-            @Override
-            public void onBufferReceived(byte[] bytes) {
+                @Override
+                public void onBufferReceived(byte[] bytes) {
 
-            }
+                }
 
-            @Override
-            public void onEndOfSpeech() {
-                listening = false;
-            }
+                @Override
+                public void onEndOfSpeech() {
+                    listening = false;
+                }
 
-            @Override
-            public void onError(int i) {
+                @Override
+                public void onError(int i) {
 
-            }
+                }
 
-            @Override
-            public void onResults(Bundle bundle) {
-                checkForCommands(bundle);
-                listening = false;
-            }
+                @Override
+                public void onResults(Bundle bundle) {
+                    checkForCommands(bundle);
+                    listening = false;
+                }
 
-            @Override
-            public void onPartialResults(Bundle bundle) {
-                checkForCommands(bundle);
-            }
+                @Override
+                public void onPartialResults(Bundle bundle) {
+                    checkForCommands(bundle);
+                }
 
-            private void checkForCommands(Bundle bundle) {
-                ArrayList<String> voiceText = bundle.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
-                for (int i = 0; i < voiceText.size(); i++) {
-                    if (voiceText.get(i).toLowerCase().contains("okay cardboard") && voiceText.get(i).toLowerCase().split("okay cardboard").length > 0) {
-                        String request = voiceText.get(i).toLowerCase().split("okay cardboard")[1].toLowerCase().replace(" ", "");
-                        print(request);
-                        for (int j = 0; j < LAUNCH_COMMANDS.length; j++) {
-                            if (request.contains(LAUNCH_COMMANDS[j])) {
-                                print(request);
-                                for (int k = 0; k < installedApps.size(); k++) {
-                                    if (request.contains(installedApps.get(k).name.toLowerCase().replace(" ", ""))) {
-                                        mVibrator.vibrate(90);
-                                        installedApps.get(k).launch();
-                                        return;
+                private void checkForCommands(Bundle bundle) {
+                    ArrayList<String> voiceText = bundle.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+                    for (int i = 0; i < voiceText.size(); i++) {
+                        if (voiceText.get(i).toLowerCase().contains("okay cardboard") && voiceText.get(i).toLowerCase().split("okay cardboard").length > 0) {
+                            String request = voiceText.get(i).toLowerCase().split("okay cardboard")[1].toLowerCase().replace(" ", "");
+                            print(request);
+                            for (int j = 0; j < LAUNCH_COMMANDS.length; j++) {
+                                if (request.contains(LAUNCH_COMMANDS[j])) {
+                                    print(request);
+                                    for (int k = 0; k < installedApps.size(); k++) {
+                                        if (request.contains(installedApps.get(k).name.toLowerCase().replace(" ", ""))) {
+                                            mVibrator.vibrate(90);
+                                            installedApps.get(k).launch();
+                                            return;
+                                        }
                                     }
                                 }
                             }
-                        }
-                        for (int j = 0; j < EXIT_COMMANDS.length; j++) {
-                            if (request.contains(EXIT_COMMANDS[j])) {
-                                installedApps.get(installedApps.size() - 1).launch();
-                                return;
+                            for (int j = 0; j < EXIT_COMMANDS.length; j++) {
+                                if (request.contains(EXIT_COMMANDS[j])) {
+                                    installedApps.get(installedApps.size() - 1).launch();
+                                    return;
+                                }
                             }
-                        }
-                        for (int j = 0; j < SETTINGS_COMMANDS.length; j++) {
-                            if (request.contains(SETTINGS_COMMANDS[j])) {
-                                installedApps.get(installedApps.size() - 2).launch();
-                                return;
+                            for (int j = 0; j < SETTINGS_COMMANDS.length; j++) {
+                                if (request.contains(SETTINGS_COMMANDS[j])) {
+                                    installedApps.get(installedApps.size() - 2).launch();
+                                    return;
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            @Override
-            public void onEvent(int i, Bundle bundle) {
+                @Override
+                public void onEvent(int i, Bundle bundle) {
 
-            }
-        };
+                }
+            };
 
-        if (preferences.getBoolean("listen_for_voice", true)) {
+
             recognizerIntent = RecognizerIntent.getVoiceDetailsIntent(getBaseContext());
             recognizerIntent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 30000);
             recognizerIntent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 30000);
@@ -296,7 +297,6 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
         if (premium) {
             wallpaper = ((BitmapDrawable) WallpaperManager.getInstance(this).getDrawable()).getBitmap();
         }
-
     }
 
     private void print(String request) {
