@@ -17,15 +17,39 @@
         android:title="@string/pref_title_package_names"
         android:summary="@string/pref_description_package_names"
         android:defaultValue="@string/pref_default_package_names"
-        android:selectAllOnFocus="true"
+        android:selectAllOnFocus="false"
         android:inputType="textNoSuggestions"
         android:singleLine="true"
         android:maxLines="1" />
+
+    <EditTextPreference
+        android:key="blacklist"
+        android:title="@string/pref_title_blacklist"
+        android:summary="@string/pref_description_blacklist"
+        android:defaultValue="@string/pref_default_blacklist"
+        android:selectAllOnFocus="false"
+        android:inputType="textNoSuggestions"
+        android:singleLine="true"
+        android:maxLines="1" />
+
+    <dudeofawesome.cardboardhome.SeekBarPreference
+        android:key="interpupilary_distance"
+        android:title="@string/pref_title_interpupilary_distance"
+        android:summary="@string/pref_description_interpupilary_distance"
+        android:dialogMessage="@string/pref_description_interpupilary_distance"
+        android:defaultValue="50"
+        android:max="100" />
 
     <CheckBoxPreference
         android:key="vibrate_on_selection"
         android:title="@string/pref_title_vibrate"
         android:defaultValue="true" />
+
+    <CheckBoxPreference
+        android:key="disable_volume_buttons"
+        android:title="@string/pref_title_disable_volume_buttons"
+        android:summary="@string/pref_description_disable_volume_buttons"
+        android:defaultValue="false" />
 
     <CheckBoxPreference
         android:key="premium"
