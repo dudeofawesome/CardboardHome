@@ -89,6 +89,10 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        init();
+    }
+
+    private void init() {
         preferences = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
         gameView = new MyView(this);
         setContentView(gameView);
@@ -403,6 +407,7 @@ public class Launcher extends CardboardActivity implements SensorEventListener {
 
     protected void onResume() {
         super.onResume();
+//        init();
         mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
         makeImmersive();
     }
